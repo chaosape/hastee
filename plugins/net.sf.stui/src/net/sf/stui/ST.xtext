@@ -1,0 +1,165 @@
+grammar net.sf.stui.ST hidden(WS, ML_COMMENT, SL_COMMENT)
+
+import "http://www.eclipse.org/emf/2002/Ecore" as ecore
+
+generate st "http://www.sf.net/stui/ST"
+
+Group:
+	templates += NamedTemplate*;
+	
+NamedTemplate:
+	name = ID '(' (arguments += Attribute (',' arguments += Attribute)*)? ')' '::='
+	(('<<' template = Template '>>')
+	| templateStr = STRING);
+
+Attribute: _name = ID;
+
+Template: {Template} (elements += Element)*;
+
+Element: SubElement | token='|' | token='}';
+
+SubElement:
+  Test
+| ExpressionElement
+| Comment
+| Escape
+| {SubElement} Token;
+
+ExpressionElement:
+	'<' expression=Expression (';' options += Option (',' options += Option)* )? '>';
+
+Comment: {Comment} '<' '!' (Token | '|' | '}')* '!' '>';
+
+Escape: {Escape} '<' ESCAPE_TOKEN '>';
+
+terminal ESCAPE_TOKEN: '\\' ('n' | 't' | '\\');
+
+SubTemplate: {SubTemplate} '{'
+		(arguments += Attribute (',' arguments += Attribute)* '|')?
+		(elements += SubElement)*
+	'}';
+
+// if/elseif/else/endif test
+Test: '<' 'if' '(' c1 += Conditional ')' '>'
+	t1 += Template
+	('<' 'elseif' '(' c2 += Conditional ')' '>' t2 += Template)*
+	('<' 'else' '>' t3 = Template)?
+	'<' 'endif' '>';
+
+// conditional expressions
+Conditional:
+	AndConditional ( {ConditionalBinary.left=current} operator='||' right=AndConditional )* ;
+AndConditional returns Conditional:
+	NotConditional ( {ConditionalBinary.left=current} operator='&&' right=NotConditional )* ;
+NotConditional returns Conditional:
+	{ConditionalUnary} unaryOperator='!' condition=ConditionalExpr
+	| expression=ExprMember;
+ConditionalExpr returns Conditional:
+	{ConditionalExpr} expression=NotConditionalExpr
+	| '(' Conditional ')';
+NotConditionalExpr:
+	expr=ExprAttribute ('.' properties += Property)*;
+
+Property: _name = ID // name is private
+| '(' indirect = ExprMap ')';
+
+// expression
+Expression: ExprMap;
+
+ExprNoComma: member=ExprMember (':' map=MapTemplateRef)? ;
+
+Option: _name = ID ('=' value = ExprNoComma)?; // option name is private
+
+// TODO: add stuff here
+ExprMap:
+	members += ExprMember
+	( (',' members += ExprMember)* ':' template = MapTemplateRef)?;
+
+MapTemplateRef:
+	ExprTemplate
+|	SubTemplate
+|	ExprIndirect;
+
+ExprMember:	root=ExprInclude ('.' properties += Property)*;
+
+ExprInclude:
+	ExprTemplate
+	| ExprPrimary;
+
+// call to template
+ExprTemplate: template=[NamedTemplate] '(' args = ExprTemplateArgs? ')';
+
+ExprTemplateArgs:
+	NamedArgs
+|	Args;
+
+NamedArgs: args += NamedArg (',' args += NamedArg)*;
+
+NamedArg returns Arg: attribute=[Attribute|ID] '=' value=ExprNoComma;
+
+Args: args += Arg (',' args += Arg)*;
+
+Arg: value=ExprNoComma;
+
+// primary expression
+ExprPrimary:
+	ExprAttribute
+|	ExprString
+|	ExprSubTemplate
+|	ExprList
+|	ExprIndirect;
+
+ExprAttribute: attribute=[Attribute|ID];
+
+ExprString: string = STRING;
+
+ExprSubTemplate: subTemplate = SubTemplate;
+
+ExprIndirect: '(' expr = Expression ')' ('(' args = ExprTemplateArgs ')')?;
+
+ExprList: '[' values += ExprNoComma (',' values += ExprNoComma)* ']';
+
+// tokens
+
+Token:
+'!'
+| '('
+| ')'
+| ','
+| '.'
+| ':'
+| ';'
+| '\\<'
+| '='
+| '\\>'
+| '['
+| '\\'
+| ']'
+| '{'
+
+| 'elseif'
+| 'else'
+| '||'
+| '<<'
+| '&&'
+| 'if'
+| 'endif'
+| '::='
+| '::'
+
+| ID
+// | INT
+| STRING
+| ESCAPE_TOKEN
+| ANY_OTHER;
+
+terminal ID  		: ('a'..'z'|'A'..'Z'|'_') ('a'..'z'|'A'..'Z'|'_'|'0'..'9')*;
+// terminal INT returns ecore::EInt: ('0'..'9')+;
+terminal STRING	: 
+			'"' ( '\\' ('b'|'t'|'n'|'f'|'r'|'"'|"'"|'\\') | !('\\'|'"') )* '"'; 
+terminal ML_COMMENT	: '/*' -> '*/';
+terminal SL_COMMENT 	: '//' !('\n'|'\r')* ('\r'? '\n')?;
+
+terminal WS			: (' '|'\t'|'\r'|'\n')+;
+
+terminal ANY_OTHER: . ;
