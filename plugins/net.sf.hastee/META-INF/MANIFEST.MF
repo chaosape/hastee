@@ -1,9 +1,9 @@
 Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
-Bundle-Name: net.sf.stui
+Bundle-Name: net.sf.hastee
 Bundle-Vendor: My Company
 Bundle-Version: 1.0.0
-Bundle-SymbolicName: net.sf.stui; singleton:=true
+Bundle-SymbolicName: net.sf.hastee; singleton:=true
 Bundle-ActivationPolicy: lazy
 Require-Bundle: org.eclipse.xtext,
  org.eclipse.xtext.generator;resolution:=optional,
@@ -19,12 +19,12 @@ Require-Bundle: org.eclipse.xtext,
  org.antlr.runtime
 Import-Package: org.apache.log4j
 Bundle-RequiredExecutionEnvironment: JavaSE-1.6
-Export-Package: net.sf.stui,
- net.sf.stui.services,
- net.sf.stui.st,
- net.sf.stui.st.impl,
- net.sf.stui.st.util,
- net.sf.stui.parseTreeConstruction,
- net.sf.stui.parser.antlr,
- net.sf.stui.parser.antlr.internal,
- net.sf.stui.validation
+Export-Package: net.sf.hastee,
+ net.sf.hastee.services,
+ net.sf.hastee.st,
+ net.sf.hastee.st.impl,
+ net.sf.hastee.st.util,
+ net.sf.hastee.parseTreeConstruction,
+ net.sf.hastee.parser.antlr,
+ net.sf.hastee.parser.antlr.internal,
+ net.sf.hastee.validation

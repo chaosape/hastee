@@ -1,4 +1,4 @@
-package net.sf.stui.validation;
+package net.sf.hastee.validation;
  
 
 public class STJavaValidator extends AbstractSTJavaValidator {

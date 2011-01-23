@@ -1,6 +1,6 @@
-package net.sf.stui;
+package net.sf.hastee;
 
-import net.sf.stui.st.util.StSwitch;
+import net.sf.hastee.st.util.StSwitch;
 
 public class ExpressionRenderer extends StSwitch<String> {
 

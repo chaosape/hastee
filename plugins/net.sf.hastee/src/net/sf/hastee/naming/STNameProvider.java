@@ -1,9 +1,9 @@
-package net.sf.stui.naming;
+package net.sf.hastee.naming;
 
-import net.sf.stui.st.Attribute;
-import net.sf.stui.st.Option;
-import net.sf.stui.st.Property;
-import net.sf.stui.st.SubTemplate;
+import net.sf.hastee.st.Attribute;
+import net.sf.hastee.st.Option;
+import net.sf.hastee.st.Property;
+import net.sf.hastee.st.SubTemplate;
 
 import org.eclipse.xtext.naming.DefaultDeclarativeQualifiedNameProvider;
 

@@ -1,15 +1,15 @@
-package net.sf.stui.linking;
+package net.sf.hastee.linking;
 
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import net.sf.stui.st.Attribute;
-import net.sf.stui.st.Group;
-import net.sf.stui.st.NamedTemplate;
-import net.sf.stui.st.StFactory;
-import net.sf.stui.st.StPackage;
+import net.sf.hastee.st.Attribute;
+import net.sf.hastee.st.Group;
+import net.sf.hastee.st.NamedTemplate;
+import net.sf.hastee.st.StFactory;
+import net.sf.hastee.st.StPackage;
 
 import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.ecore.EClass;

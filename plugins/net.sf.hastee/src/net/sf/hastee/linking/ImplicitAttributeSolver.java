@@ -1,4 +1,4 @@
-package net.sf.stui.linking;
+package net.sf.hastee.linking;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -6,10 +6,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import net.sf.stui.st.Attribute;
-import net.sf.stui.st.ExprTemplate;
-import net.sf.stui.st.Group;
-import net.sf.stui.st.NamedTemplate;
+import net.sf.hastee.st.Attribute;
+import net.sf.hastee.st.ExprTemplate;
+import net.sf.hastee.st.Group;
+import net.sf.hastee.st.NamedTemplate;
 
 import org.eclipse.xtext.EcoreUtil2;
 

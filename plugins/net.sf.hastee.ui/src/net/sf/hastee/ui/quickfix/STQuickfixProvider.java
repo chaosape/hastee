@@ -1,5 +1,5 @@
 
-package net.sf.stui.ui.quickfix;
+package net.sf.hastee.ui.quickfix;
 
 import org.eclipse.xtext.ui.editor.quickfix.DefaultQuickfixProvider;
 

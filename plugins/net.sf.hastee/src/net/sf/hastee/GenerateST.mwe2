@@ -1,12 +1,12 @@
-module net.sf.stui.ST
+module net.sf.hastee.ST
 
 import org.eclipse.emf.mwe.utils.*
 import org.eclipse.xtext.generator.*
 import org.eclipse.xtext.ui.generator.*
 
-var grammarURI = "classpath:/net/sf/stui/ST.xtext"
+var grammarURI = "classpath:/net/sf/hastee/ST.xtext"
 var file.extensions = "st,stg"
-var projectName = "net.sf.stui"
+var projectName = "net.sf.hastee"
 var runtimeProject = "../${projectName}"
 
 Workflow {

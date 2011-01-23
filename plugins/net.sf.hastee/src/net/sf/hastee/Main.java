@@ -1,10 +1,10 @@
-package net.sf.stui;
+package net.sf.hastee;
 
 import java.io.File;
 import java.util.List;
 
-import net.sf.stui.st.Group;
-import net.sf.stui.st.NamedTemplate;
+import net.sf.hastee.st.Group;
+import net.sf.hastee.st.NamedTemplate;
 
 import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.ecore.resource.Resource;

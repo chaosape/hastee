@@ -5,9 +5,9 @@
 
   <extension point="org.eclipse.emf.ecore.generated_package">
     <package 
-       uri = "http://www.sf.net/stui/ST" 
-       class = "net.sf.stui.st.StPackage"
-       genModel = "net/sf/stui/ST.genmodel" /> 
+       uri = "http://www.sf.net/hastee/ST" 
+       class = "net.sf.hastee.st.StPackage"
+       genModel = "net/sf/hastee/ST.genmodel" /> 
 	
   </extension>
 

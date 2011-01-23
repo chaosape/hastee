@@ -6,42 +6,42 @@
     <extension
             point="org.eclipse.ui.editors">
         <editor
-            class="net.sf.stui.ui.STExecutableExtensionFactory:org.eclipse.xtext.ui.editor.XtextEditor"
+            class="net.sf.hastee.ui.STExecutableExtensionFactory:org.eclipse.xtext.ui.editor.XtextEditor"
             contributorClass="org.eclipse.ui.editors.text.TextEditorActionContributor"
             default="true"
             extensions="st,stg"
-            id="net.sf.stui.ST"
+            id="net.sf.hastee.ST"
             name="ST Editor">
         </editor>
     </extension>
     <extension
         point="org.eclipse.ui.handlers">
         <handler
-            class="net.sf.stui.ui.STExecutableExtensionFactory:org.eclipse.xtext.ui.editor.hyperlinking.OpenDeclarationHandler"
+            class="net.sf.hastee.ui.STExecutableExtensionFactory:org.eclipse.xtext.ui.editor.hyperlinking.OpenDeclarationHandler"
             commandId="org.eclipse.xtext.ui.editor.hyperlinking.OpenDeclaration">
             <activeWhen>
                 <reference
-                    definitionId="net.sf.stui.ST.Editor.opened">
+                    definitionId="net.sf.hastee.ST.Editor.opened">
                 </reference>
             </activeWhen>
         </handler>
         <handler
-            class="net.sf.stui.ui.STExecutableExtensionFactory:org.eclipse.xtext.ui.editor.handler.ValidateActionHandler"
-            commandId="net.sf.stui.ST.validate">
+            class="net.sf.hastee.ui.STExecutableExtensionFactory:org.eclipse.xtext.ui.editor.handler.ValidateActionHandler"
+            commandId="net.sf.hastee.ST.validate">
          <activeWhen>
             <reference
-                    definitionId="net.sf.stui.ST.Editor.opened">
+                    definitionId="net.sf.hastee.ST.Editor.opened">
             </reference>
          </activeWhen>
       </handler>
     </extension>
     <extension point="org.eclipse.core.expressions.definitions">
-        <definition id="net.sf.stui.ST.Editor.opened">
+        <definition id="net.sf.hastee.ST.Editor.opened">
             <and>
                 <reference definitionId="isActiveEditorAnInstanceOfXtextEditor"/>
                 <with variable="activeEditor">
                     <test property="org.eclipse.xtext.ui.editor.XtextEditor.languageName" 
-                        value="net.sf.stui.ST" 
+                        value="net.sf.hastee.ST" 
                         forcePluginActivation="true"/>
                 </with>        
             </and>
@@ -50,37 +50,37 @@
     <extension
             point="org.eclipse.ui.preferencePages">
         <page
-            class="net.sf.stui.ui.STExecutableExtensionFactory:org.eclipse.xtext.ui.editor.preferences.LanguageRootPreferencePage"
-            id="net.sf.stui.ST"
+            class="net.sf.hastee.ui.STExecutableExtensionFactory:org.eclipse.xtext.ui.editor.preferences.LanguageRootPreferencePage"
+            id="net.sf.hastee.ST"
             name="ST">
-            <keywordReference id="net.sf.stui.ui.keyword_ST"/>
+            <keywordReference id="net.sf.hastee.ui.keyword_ST"/>
         </page>
         <page
-            category="net.sf.stui.ST"
-            class="net.sf.stui.ui.STExecutableExtensionFactory:org.eclipse.xtext.ui.editor.syntaxcoloring.SyntaxColoringPreferencePage"
-            id="net.sf.stui.ST.coloring"
+            category="net.sf.hastee.ST"
+            class="net.sf.hastee.ui.STExecutableExtensionFactory:org.eclipse.xtext.ui.editor.syntaxcoloring.SyntaxColoringPreferencePage"
+            id="net.sf.hastee.ST.coloring"
             name="Syntax Coloring">
-            <keywordReference id="net.sf.stui.ui.keyword_ST"/>
+            <keywordReference id="net.sf.hastee.ui.keyword_ST"/>
         </page>
         <page
-            category="net.sf.stui.ST"
-            class="net.sf.stui.ui.STExecutableExtensionFactory:org.eclipse.xtext.ui.editor.templates.XtextTemplatePreferencePage"
-            id="net.sf.stui.ST.templates"
+            category="net.sf.hastee.ST"
+            class="net.sf.hastee.ui.STExecutableExtensionFactory:org.eclipse.xtext.ui.editor.templates.XtextTemplatePreferencePage"
+            id="net.sf.hastee.ST.templates"
             name="Templates">
-            <keywordReference id="net.sf.stui.ui.keyword_ST"/>
+            <keywordReference id="net.sf.hastee.ui.keyword_ST"/>
         </page>
     </extension>
     <extension
         point="org.eclipse.ui.keywords">
         <keyword
-            id="net.sf.stui.ui.keyword_ST"
+            id="net.sf.hastee.ui.keyword_ST"
             label="ST"/>
     </extension>
     <extension
          point="org.eclipse.ui.commands">
       <command
             description="Trigger expensive validation"
-            id="net.sf.stui.ST.validate"
+            id="net.sf.hastee.ST.validate"
             name="Validate">
       </command>
     </extension>
@@ -88,12 +88,12 @@
         <menuContribution
             locationURI="popup:#TextEditorContext?after=group.edit">
              <command
-                 commandId="net.sf.stui.ST.validate"
+                 commandId="net.sf.hastee.ST.validate"
                  style="push"
                  tooltip="Trigger expensive validation">
             <visibleWhen checkEnabled="false">
                 <reference
-                    definitionId="net.sf.stui.ST.Editor.opened">
+                    definitionId="net.sf.hastee.ST.Editor.opened">
                 </reference>
             </visibleWhen>
          </command>  
@@ -103,7 +103,7 @@
 		<menuContribution locationURI="popup:#TextEditorContext?endof=group.find">
 			<command commandId="org.eclipse.xtext.ui.editor.FindReferences">
 				<visibleWhen checkEnabled="false">
-                	<reference definitionId="net.sf.stui.ST.Editor.opened">
+                	<reference definitionId="net.sf.hastee.ST.Editor.opened">
                 	</reference>
             	</visibleWhen>
 			</command>
@@ -111,11 +111,11 @@
 	</extension>
 	<extension point="org.eclipse.ui.handlers">
 	    <handler
-            class="net.sf.stui.ui.STExecutableExtensionFactory:org.eclipse.xtext.ui.editor.findrefs.FindReferencesHandler"
+            class="net.sf.hastee.ui.STExecutableExtensionFactory:org.eclipse.xtext.ui.editor.findrefs.FindReferencesHandler"
             commandId="org.eclipse.xtext.ui.editor.FindReferences">
             <activeWhen>
                 <reference
-                    definitionId="net.sf.stui.ST.Editor.opened">
+                    definitionId="net.sf.hastee.ST.Editor.opened">
                 </reference>
             </activeWhen>
         </handler>
@@ -126,13 +126,13 @@
 	<extension
 		point="org.eclipse.emf.ecore.extension_parser">
 		<parser
-			class="net.sf.stui.ui.STExecutableExtensionFactory:org.eclipse.xtext.resource.IResourceFactory"
+			class="net.sf.hastee.ui.STExecutableExtensionFactory:org.eclipse.xtext.resource.IResourceFactory"
 			type="st">
 		</parser>
 	</extension>
 	<extension point="org.eclipse.xtext.extension_resourceServiceProvider">
         <resourceServiceProvider
-            class="net.sf.stui.ui.STExecutableExtensionFactory:org.eclipse.xtext.ui.resource.IResourceUIServiceProvider"
+            class="net.sf.hastee.ui.STExecutableExtensionFactory:org.eclipse.xtext.ui.resource.IResourceUIServiceProvider"
             uriExtension="st">
         </resourceServiceProvider>
     </extension>
@@ -140,13 +140,13 @@
 	<extension
 		point="org.eclipse.emf.ecore.extension_parser">
 		<parser
-			class="net.sf.stui.ui.STExecutableExtensionFactory:org.eclipse.xtext.resource.IResourceFactory"
+			class="net.sf.hastee.ui.STExecutableExtensionFactory:org.eclipse.xtext.resource.IResourceFactory"
 			type="stg">
 		</parser>
 	</extension>
 	<extension point="org.eclipse.xtext.extension_resourceServiceProvider">
         <resourceServiceProvider
-            class="net.sf.stui.ui.STExecutableExtensionFactory:org.eclipse.xtext.ui.resource.IResourceUIServiceProvider"
+            class="net.sf.hastee.ui.STExecutableExtensionFactory:org.eclipse.xtext.ui.resource.IResourceUIServiceProvider"
             uriExtension="stg">
         </resourceServiceProvider>
     </extension>
@@ -158,11 +158,11 @@
 	<extension
 		point="org.eclipse.ui.handlers">
 		<handler 
-			class="net.sf.stui.ui.STExecutableExtensionFactory:org.eclipse.xtext.ui.editor.outline.quickoutline.ShowQuickOutlineActionHandler"
+			class="net.sf.hastee.ui.STExecutableExtensionFactory:org.eclipse.xtext.ui.editor.outline.quickoutline.ShowQuickOutlineActionHandler"
 			commandId="org.eclipse.xtext.ui.editor.outline.QuickOutline">
 			<activeWhen>
 				<reference
-					definitionId="net.sf.stui.ST.Editor.opened">
+					definitionId="net.sf.hastee.ST.Editor.opened">
 				</reference>
 			</activeWhen>
 		</handler>
@@ -182,7 +182,7 @@
 				style="push"
 				tooltip="Open Quick Outline">
 				<visibleWhen checkEnabled="false">
-					<reference definitionId="net.sf.stui.ST.Editor.opened"/>
+					<reference definitionId="net.sf.hastee.ST.Editor.opened"/>
 				</visibleWhen>
 			</command>
 		</menuContribution>
@@ -191,7 +191,7 @@
    <extension
          point="org.eclipse.ui.ide.markerResolution">
       <markerResolutionGenerator
-            class="net.sf.stui.ui.STExecutableExtensionFactory:org.eclipse.xtext.ui.editor.quickfix.MarkerResolutionGenerator">
+            class="net.sf.hastee.ui.STExecutableExtensionFactory:org.eclipse.xtext.ui.editor.quickfix.MarkerResolutionGenerator">
       </markerResolutionGenerator>
    </extension>
 

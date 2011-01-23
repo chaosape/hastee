@@ -1,5 +1,5 @@
 
-package net.sf.stui;
+package net.sf.hastee;
 
 /**
  * Initialization support for running Xtext languages 
