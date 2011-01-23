@@ -140,7 +140,6 @@ Token:
 | 'elseif'
 | 'else'
 | '||'
-| '<<'
 | '&&'
 | 'if'
 | 'endif'
@@ -148,15 +147,16 @@ Token:
 | '::'
 
 | ID
-// | INT
 | STRING
 | ESCAPE_TOKEN
 | ANY_OTHER;
 
 terminal ID  		: ('a'..'z'|'A'..'Z'|'_') ('a'..'z'|'A'..'Z'|'_'|'0'..'9')*;
-// terminal INT returns ecore::EInt: ('0'..'9')+;
+
+// STRING should be removed at some point
 terminal STRING	: 
 			'"' ( '\\' ('b'|'t'|'n'|'f'|'r'|'"'|"'"|'\\') | !('\\'|'"') )* '"'; 
+
 terminal ML_COMMENT	: '/*' -> '*/';
 terminal SL_COMMENT 	: '//' !('\n'|'\r')* ('\r'? '\n')?;
 

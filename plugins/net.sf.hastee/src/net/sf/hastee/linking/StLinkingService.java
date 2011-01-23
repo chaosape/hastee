@@ -46,7 +46,12 @@ public class StLinkingService extends DefaultLinkingService {
 		addFunction("trunc");
 		addFunction("strip");
 		addFunction("length");
+
+		i0 = StFactory.eINSTANCE.createAttribute();
+		i0.set_name("i0");
 	}
+
+	private Attribute i0;
 
 	/**
 	 * Adds a new function to the built-in functions map with the given
@@ -76,7 +81,7 @@ public class StLinkingService extends DefaultLinkingService {
 	 *            function name
 	 * @return a list
 	 */
-	private List<EObject> builtinFunction(EObject context, String name) {
+	private List<EObject> getBuiltinFunction(EObject context, String name) {
 		NamedTemplate function = functions.get(name);
 		if (function != null) {
 			// Attach the stub to the resource that's being parsed
@@ -112,6 +117,12 @@ public class StLinkingService extends DefaultLinkingService {
 			}
 		}
 
+		if (s.equals("i0") || s.equals("i1")) {
+			Resource res = makeResource(context.eResource());
+			res.getContents().add(i0);
+			return Collections.singletonList((EObject) i0);
+		}
+
 		return Collections.emptyList();
 	}
 
@@ -127,7 +138,7 @@ public class StLinkingService extends DefaultLinkingService {
 		final String s = getCrossRefNodeAsString(node);
 		if (requiredType != null && s != null) {
 			if (StPackage.Literals.NAMED_TEMPLATE.isSuperTypeOf(requiredType)) {
-				return builtinFunction(context, s);
+				return getBuiltinFunction(context, s);
 			} else if (StPackage.Literals.ATTRIBUTE.isSuperTypeOf(requiredType)) {
 				return getImplicitAttribute(context, s);
 			}
