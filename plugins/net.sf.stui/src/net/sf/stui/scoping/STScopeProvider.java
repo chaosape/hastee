@@ -8,7 +8,6 @@ import net.sf.stui.st.ExprTemplate;
 import net.sf.stui.st.NamedTemplate;
 import net.sf.stui.st.SubTemplate;
 
-import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.EReference;
 import org.eclipse.xtext.scoping.IScope;
 import org.eclipse.xtext.scoping.Scopes;
@@ -54,20 +53,9 @@ public class STScopeProvider extends AbstractDeclarativeScopeProvider {
 		return getScopeOfArguments(expr.getTemplate().getArguments());
 	}
 
-	public IScope scope_ExprAttribute_attribute(EObject object,
-			EReference reference) {
-		EObject cter = object.eContainer();
-		if (cter == null) {
-			return IScope.NULLSCOPE;
-		} else {
-			return getScope(cter, reference);
-		}
-	}
-
 	public IScope scope_ExprAttribute_attribute(NamedTemplate template,
 			EReference reference) {
-		return getScopeOfArguments(template.getArguments(),
-				getScope(template.eContainer(), reference));
+		return getScopeOfArguments(template.getArguments());
 	}
 
 	public IScope scope_ExprAttribute_attribute(SubTemplate template,

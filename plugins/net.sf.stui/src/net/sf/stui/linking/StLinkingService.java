@@ -5,6 +5,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import net.sf.stui.st.Attribute;
 import net.sf.stui.st.Group;
 import net.sf.stui.st.NamedTemplate;
 import net.sf.stui.st.StFactory;
@@ -88,6 +89,32 @@ public class StLinkingService extends DefaultLinkingService {
 		return Collections.emptyList();
 	}
 
+	private List<EObject> getImplicitAttribute(EObject context, String s) {
+		// a NamedTemplate may reference attributes from other templates that
+		// can call it
+		NamedTemplate template = EcoreUtil2.getContainerOfType(context,
+				NamedTemplate.class);
+		Group group = (Group) template.eContainer();
+		OnChangeEvictingCache.CacheAdapter cache = new OnChangeEvictingCache()
+				.getOrCreate(group);
+		Map<NamedTemplate, Map<String, Attribute>> map = cache
+				.get("AttributeMap");
+		if (map == null) {
+			map = new ImplicitAttributeSolver().buildAttributeMap(group);
+			cache.set("AttributeMap", map);
+		}
+
+		Map<String, Attribute> implicitAttrs = map.get(template);
+		if (implicitAttrs != null) {
+			Attribute attr = implicitAttrs.get(s);
+			if (attr != null) {
+				return Collections.singletonList((EObject) attr);
+			}
+		}
+
+		return Collections.emptyList();
+	}
+
 	@Override
 	public List<EObject> getLinkedObjects(EObject context, EReference ref,
 			AbstractNode node) {
@@ -96,20 +123,13 @@ public class StLinkingService extends DefaultLinkingService {
 			return result;
 		}
 
-		// TODO build tree
-		Group group = EcoreUtil2.getContainerOfType(context, Group.class);
-		OnChangeEvictingCache.CacheAdapter cache = new OnChangeEvictingCache()
-				.getOrCreate(group);
-		cache.toString();
-//		tree.
-//		List<IContainer> result = null;
-//		result = cache.get(cacheKey);
-
 		final EClass requiredType = ref.getEReferenceType();
 		final String s = getCrossRefNodeAsString(node);
 		if (requiredType != null && s != null) {
 			if (StPackage.Literals.NAMED_TEMPLATE.isSuperTypeOf(requiredType)) {
 				return builtinFunction(context, s);
+			} else if (StPackage.Literals.ATTRIBUTE.isSuperTypeOf(requiredType)) {
+				return getImplicitAttribute(context, s);
 			}
 		}
 
