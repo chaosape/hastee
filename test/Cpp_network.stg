@@ -1,0 +1,303 @@
+///////////////////////////////////////////////////////////////////////////////
+// include Actors
+includeActor(actor) ::= <<
+#include "$actor.packageAsList; separator="/"$/$actor.simpleName$.h"
+>>
+
+includeActors(actors) ::= <<
+$actors: includeActor(); separator="\n"$
+>>
+
+///////////////////////////////////////////////////////////////////////////////
+// initialize Instances
+argumentList(parameter) ::= <<
+$if (instance.parameters.(parameter).stringExpr)
+$"$instance.parameters.(parameter)$"$
+else
+$$instance.parameters.(parameter)$$
+endif$
+>>
+
+initializeInstance(instance) ::= <<
+$if (instance.actor.parameters.list)
+$("$instance.hierarchicalId: {$it$}; separator="/"$", $instance.actor.parameters.list: argumentList(); separator=", "$, NETWORK_PROFILING_MODE)$
+else
+$("$instance.hierarchicalId: {$it$}; separator="/"$", NETWORK_PROFILING_MODE)$
+endif$
+>>
+
+initializeInstances(instances) ::= <<
+$instances: initializeInstance(); wrap, separator=", "$
+>>
+
+
+///////////////////////////////////////////////////////////////////////////////
+// declare FIFOs
+
+
+doDeclareFifo(edge, src, tgt, kind) ::= <<
+FifoAPI * fifo_$network.connectionMap.(edge)$ = FifoFactory\<$edge.source.type$\>::allocateFifo($if(edge.size)$$edge.size$$else$SIZE$endif$, $kind$);
+
+>>
+
+declareFifo(edge) ::= <<
+$doDeclareFifo(edge=edge, src=network.sourceMap.(edge), tgt=network.targetMap.(edge), kind=options.fifoKind.(edge))$
+>>
+
+declareFifos(connections) ::= <<
+$network.connections: declareFifo()$
+
+>>
+
+///////////////////////////////////////////////////////////////////////////////
+// assigns FIFOs
+
+doAssignFifo(source, sourcePort, target, targetPort, count) ::= <<
+$if (source.actor)$$
+source.id$.connect(ACTOR_PORT_OUT, $source.actor.packageAsList; separator="::"$::$source.actor.simpleName$_$sourcePort.name$, fifo_$count$);$
+else
+$$source.id$.connect(ACTOR_PORT_OUT, $network.name$_$sourcePort.name$, fifo_$count$);$
+endif$
+
+$if (target.actor)
+$$target.id$.connect(ACTOR_PORT_IN, $target.actor.packageAsList; separator="::"$::$target.actor.simpleName$_$targetPort.name$, fifo_$count$);$
+else
+$$target.id$.connect(ACTOR_PORT_IN, $network.name$_$targetPort.name$, fifo_$count$);$
+endif$
+>>
+
+tryAssignFifo(edge, src, tgt) ::= <<
+$doAssignFifo(
+  source=src.instance, sourcePort=edge.source,
+  target=tgt.instance, targetPort=edge.target,
+  count=network.connectionMap.(edge))$
+>>
+
+assignFifo(edge) ::= <<
+$tryAssignFifo(edge=edge, src=network.sourceMap.(edge), tgt=network.targetMap.(edge))$
+>>
+
+assignFifos(edges) ::= <<
+$edges: assignFifo(); separator="\n"$
+>>
+
+
+namespace()::= <<
+$instance.actor.packageAsList; separator="::"$
+>>
+///////////////////////////////////////////////////////////////////////////////
+// declare Instances
+
+declareInstance(instance) ::= <<
+$if(instance.serdes)$
+WrapperAka $instance.id$("$instance.id$");
+$else$
+$namespace()$::$instance.actor.simpleName$ $instance.id$$initializeInstance(instance)$;
+$endif$
+>>
+
+declareInstances(instances) ::= <<
+$instances: declareInstance(); separator="\n"$
+>>
+
+
+
+///////////////////////////////////////////////////////////////////////////////
+// print calls to initialize() and scheduler()
+printInitialize(instance) ::= <<
+$if (instance.actor)$
+$if (!instance.actor.initializes.empty)$
+$instance.id$.initialize();
+$endif$
+$endif$
+>>
+
+printInitializes(instances) ::= <<
+$instances: printInitialize()$
+>>
+
+printInitializeActor(instance) ::= <<
+$if (instance.actor)$
+$instance.id$.initializeActor();
+$endif$
+>>
+
+printInitializeActors(instances) ::= <<
+$instances: printInitializeActor()$
+>>
+
+printScheduler(instance) ::= <<
+$if (!instance.serdes)$res += $instance.id$.schedule();$endif$
+>>
+
+printSchedulers(instances) ::= <<
+$instances: printScheduler(); separator="\n"$
+>>
+
+
+///////////////////////////////////////////////////////////////////////////////
+// threads
+
+declareThread(thread) ::= <<
+$declareNetwork(id=thread, instances=threads.(thread))$
+>>
+
+declareThreads(threads) ::= <<
+$threads.keys: declareThread(); separator="\n\n"$
+>>
+
+
+///////////////////////////////////////////////////////////////////////////////
+// scheduler
+
+declareNetwork(id, instances) ::= <<
+
+class network_$id$ : public Threadaka
+{
+public:
+	void run(void * args)
+	{
+		$printInitializeActors(instances)$
+		$printInitializes(instances)$
+		while (1) 
+		{
+			int res = 0;
+			$printSchedulers(instances)$
+			if(res == 0)
+			yield();
+		}
+	}	
+};
+
+>>
+
+startWrapper(instance) ::= <<
+$if (instance.serdes)$
+$instance.id$.initializeActor();
+$instance.id$.start();
+$endif$
+>>
+
+startWrappers(instances) ::= <<
+$instances: startWrapper()$
+>>
+
+///////////////////////////////////////////////////////////////////////////////
+// 
+
+defineNetwork(id) ::= <<
+network_$id$ $id$;
+>>
+
+startNetwork(id) ::= <<
+$id$.start();
+>>
+
+stopNetwork(id) ::= <<
+$id$.stop();
+>>
+
+
+///////////////////////////////////////////////////////////////////////////////
+// threads
+printThread(thread) ::= <<
+$printNetwork(thread)$
+>>
+
+printThreads(threads) ::= <<
+// create threads
+$threads.keys: defineNetwork(); separator="\n"$
+
+// connect fifos
+$assignFifos(network.connections)$
+
+$if (options.needSerDes)$
+// start wrappers
+$startWrappers(network.instances)$
+$endif$
+
+// start threads
+$threads.keys: startNetwork(); separator="\n"$
+
+// join threads
+$threads.keys: stopNetwork(); separator="\n"$
+
+>>
+
+///////////////////////////////////////////////////////////////////////////////
+// network
+
+network(debugFifos, fifoSize, network, options) ::= <<
+// Generated from "$network.name$"
+
+#include "fifofactory.h"
+#include "threadaka.h"
+
+$if (options.needSerDes)$
+#include "wrapperaka.h"
+$endif$
+
+extern "C" {
+#include "System/orcc_util.h"
+}
+
+#include "traceaka.h"
+TraceAka g_oTracer;
+
+#ifdef __TRACE_TOKENS__
+#define NETWORK_PROFILING_MODE	AKA_PROFILING_CAPTURE_TOKEN 
+#else
+#ifdef __TRACE_CAPTURE__
+#define NETWORK_PROFILING_MODE	AKA_PROFILING_CAPTURE_TRACE
+#else
+#define NETWORK_PROFILING_MODE	AKA_PROFILING_NONE 
+#endif
+#endif
+
+$includeActors(network.actors)$
+
+#define SIZE 10000
+
+$declareInstances(network.instances)$
+
+$declareFifos(network.connections)$
+
+$if (options.needThreads)$
+
+$declareThreads(options.threads)$
+
+$else$
+$declareNetwork(id=network.name, instances=network.instances)$
+
+$endif$
+
+int main(int argc, char *argv[]) {
+	init_orcc(argc, argv, NULL);
+$if (options.needThreads)$
+	$printThreads(options.threads)$
+$else$
+
+	// create threads
+	$defineNetwork(network.name)$
+
+	$assignFifos(network.connections)$
+
+$if (options.needSerDes)$
+	// start wrappers
+	$startWrappers(network.instances)$
+$endif$
+	
+
+	// start threads
+	$startNetwork(network.name)$
+
+	// join threads
+	$stopNetwork(network.name)$
+$endif$
+
+	return 0;
+}
+
+
+>>
+

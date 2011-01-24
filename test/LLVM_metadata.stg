@@ -1,0 +1,370 @@
+decl_MD(actor) ::= <<
+!source = !{<source_decl_MD(actor)>}
+!name = !{<name_decl_MD(actor)>}
+!action_scheduler = !{<actionScheduler_decl_MD(actor)>}
+<if(actor.inputs.list)>
+!inputs = !{<actor.inputs.list: {port | <port_decl_MD(actor=actor, port=port)>}; separator=", ">}
+<endif>
+<if(actor.outputs.list)>
+!outputs = !{<actor.outputs.list: {port | <port_decl_MD(actor=actor, port=port)>}; separator=", ">}
+<endif>
+<if(actor.parameters.list)>
+!parameters = !{<actor.parameters.list: {port | <var_decl_MD(actor=actor, var=port)>}; separator=", ">}
+<endif>
+<if(actor.stateVars.list)>
+!state_variables = !{<actor.stateVars.list: {var | <var_decl_MD(actor=actor, var=var)>}; separator=", ">}
+<endif>
+<if(actor.procs.list)> 
+!procedures = !{<actor.procs.list: {proc | <proc_decl_MD(actor=actor, proc=proc)>}; separator=", ">}
+<endif>
+<if(actor.initializes)>
+!initializes = !{<actor.initializes: {init | <action_decl_MD(actor=actor, action=init)>}; separator=", ">}
+<endif>
+<if(actor.actions)>
+!actions = !{<actor.actions: {action | <action_decl_MD(actor=actor, action=action)>}; separator=", ">}
+<endif>
+<if(actor.MoC)>
+!MoC = !{<MoC_decl_MD(actor=actor)>}
+<endif>
+
+<source_MD(actor)>
+<name_MD(actor)>
+<actionScheduler_MD(actor)>
+<actor.inputs.list: {port | <port_MD(actor= actor, port=port)>}>
+<actor.outputs.list: {port | <port_MD(actor= actor, port=port)>}>
+<actor.parameters.list: {param | <var_MD(actor=actor, var=param)>}>
+<actor.stateVars.list: {var | <var_MD(actor=actor, var=var)>}>
+<actor.procs.list: {proc | <proc_MD(actor=actor, proc=proc)>}>
+<actor.initializes: {action | <action_MD(actor=actor, action=action)>}>
+<actor.actions: {action | <action_MD(actor=actor, action=action)>}>
+<actor.templateData.patterns.keys: {pattern | <patterns_MD(actor=actor, patterns=pattern)>}>
+<if(actor.MoC)>
+<MoC_MD(actor)>
+<endif>
+
+>>
+
+
+///////////////////////////////////////////////////////////////////////////////
+// Actor MD declaration
+///////////////////////////////////////////////////////////////////////////////
+
+source_decl_MD(actor) ::= <<
+!<actor.templateData.names.(actor.file)>
+>>
+
+
+name_decl_MD(actor) ::= <<
+!<actor.templateData.names.(actor.name)>
+>>
+
+
+actionScheduler_decl_MD(actor) ::= <<
+!<actor.templateData.actionScheduler.(actor.actionScheduler)>
+>>
+
+FSM_decl_MD(actor) ::= <<
+!<actor.templateData.actionScheduler.(actor.actionScheduler.fsm)>
+>>
+
+var_decl_MD(actor, var) ::= <<
+!<actor.templateData.vars.(var)>
+>>
+
+port_decl_MD(actor, port) ::= <<
+!<actor.templateData.ports.(port)>
+>>
+
+action_decl_MD(actor, action) ::= <<
+!<actor.templateData.actions.(action)>
+>>
+
+proc_decl_MD(actor, proc) ::= <<
+!<actor.templateData.procs.(proc)>
+>>
+
+actions_decl_MD(actor) ::= <<
+!<actor.templateData.actionScheduler.(actor.actionScheduler.actions)>
+>>
+
+State_decl_MD(actor) ::= <<
+!<actor.templateData.actionScheduler.(actor.actionScheduler.fsm.states)>
+>>
+
+Transitions_decl_MD() ::= <<
+!<actor.templateData.actionScheduler.(actor.actionScheduler.fsm.transitions)>
+>>
+
+Transition_decl_MD(actor, transition) ::= <<
+!<actor.templateData.actionScheduler.(transition)>
+>>
+
+NextStates_decl_MD(actor, nextStates) ::= <<
+!<actor.templateData.actionScheduler.(nextStates)>
+>>
+
+NextState_decl_MD(actor, nextState) ::= <<
+!<actor.templateData.actionScheduler.(nextState)>
+>>
+
+Sched_decl_MD(actor, action) ::= <<
+!<actor.templateData.actions.(action.scheduler)>
+>>
+
+Body_decl_MD(actor, action) ::= <<
+!<actor.templateData.actions.(action.body)>
+>>
+
+Tag_decl_MD(actor, tag) ::= <<
+!<actor.templateData.actions.(tag)>
+>>
+
+Type_decl_MD(actor, var) ::= <<
+!<actor.templateData.types.(var.type)>
+>>
+
+VarDef_decl_MD(actor, var) ::= <<
+!<actor.templateData.names.(var.name)>
+>>
+
+patterns_decl_MD(actor, patterns) ::= <<
+!<actor.templateData.patterns.(patterns)>
+>>
+
+MoC_decl_MD(actor) ::= <<
+!<actor.templateData.mocs.(actor.MoC)>
+>>
+
+///////////////////////////////////////////////////////////////////////////////
+// Actor MD body
+///////////////////////////////////////////////////////////////////////////////
+
+source_MD(actor) ::= <<
+<source_decl_MD(actor)> = metadata !{<file_MD(actor)>}
+>>
+
+
+name_MD(actor) ::= <<
+<name_decl_MD(actor)> = metadata !{<varName_MD(actor)>}
+>>
+
+
+actionScheduler_MD(actor) ::= <<
+<actionScheduler_decl_MD(actor)> = metadata !{<
+if(!actor.actionScheduler.actions.empty)> metadata <actions_decl_MD(actor)> <else> null <endif>, <
+if(actor.actionScheduler.fsm)> metadata <FSM_decl_MD(actor)> <else> null <endif>}
+
+<if(!actor.actionScheduler.actions.empty)>
+<actions_MD(actor)>
+<endif>
+
+<if(actor.actionScheduler.fsm)>
+<FSM_MD(actor)>
+<endif>
+>>
+
+actions_MD(actor) ::= <<
+$actions_decl_MD(actor)$ = metadata !{$actor.actionScheduler.actions: {metadata $action_decl_MD(actor=actor, action=it)$}; separator=", "$}
+>>
+
+patterns_MD(actor, patterns) ::= <<
+$patterns_decl_MD(actor=actor, patterns=patterns)$ = metadata !{$patterns.keys: {metadata $port_decl_MD(actor=actor, port=it)$, i32 $patterns.(it)$}; separator=", "$}
+
+>>
+
+action_MD(actor, action) ::= <<
+$action_decl_MD(actor=actor, action=action)$ = metadata !{$
+	if(action.tag.identifiers.empty)
+		$ null $
+	else
+		$ metadata $Tag_decl_MD(actor=actor, tag=action.tag)
+	$$endif
+	$,$if(first(action.inputPattern.keys))
+		$ metadata $patterns_decl_MD(actor=actor, patterns=action.inputPattern)$$
+	else
+		$ null $
+	endif$,$
+	if(first(action.outputPattern.keys))
+		$ metadata $patterns_decl_MD(actor=actor, patterns=action.outputPattern)$$
+	else
+		$ null$
+	endif
+	$, metadata $Sched_decl_MD(actor=actor, action=action)
+	$, metadata $Body_decl_MD(actor=actor, action=action)$}
+
+$if(!action.tag.identifiers.empty)$
+$Tag_MD(actor=actor, tag=action.tag)$
+$endif$
+$!$if(first(action.inputPattern.keys))$
+$Patterns_MD(actor=actor, patterns=action.inputPattern)$
+$endif$
+$if(first(action.outputPattern.keys))$
+$Patterns_MD(actor=actor, patterns=action.outputPattern)$
+$endif$!$
+$Sched_MD(actor=actor, action=action)$
+$Body_MD(actor=actor, action=action)$
+>>
+
+
+port_MD(actor, port) ::= <<
+$port_decl_MD(actor=actor, port=port)$ = metadata !{metadata $Type_decl_MD(actor=actor, var=port)$, $varName_MD(port)$, $fifoName(port)$* @$port.name$}
+$Type_MD(actor=actor, var=port)$
+
+>>
+
+proc_MD(actor, proc) ::= <<
+$proc_decl_MD(actor=actor, proc=proc)$ = metadata !{$varName_MD(proc)$, $procExtern_MD(proc)$, $proc.returnType$($proc.parameters.list: argumentTypeDeclaration(); wrap, anchor, separator=", "$)* @$proc$}
+
+>>
+
+var_MD(actor, var) ::= <<
+$var_decl_MD(actor=actor, var=var)$ = metadata !{metadata $VarDef_decl_MD(actor=actor, var=var)$, metadata $Type_decl_MD(actor=actor, var=var)$, $var.type$* @$var$}
+$VarDef_MD(actor=actor, var=var)$
+$Type_MD(actor=actor, var=var)$
+>>
+
+FSM_MD(actor) ::= <<
+<FSM_decl_MD(actor)> = metadata !{<varState_MD(actor.actionScheduler.fsm.initialState)>, metadata <State_decl_MD(actor)>, metadata <Transitions_decl_MD(actor)>}
+<State_MD(actor)>
+<Transitions_MD(actor)>
+>>
+
+State_MD(actor) ::= <<
+$State_decl_MD(actor)$ = metadata  !{$actor.actionScheduler.fsm.states: varState_MD() ; separator=", "$}
+>>
+
+Transitions_MD(actor) ::= <<
+$Transitions_decl_MD(actor)$ = metadata  !{$actor.actionScheduler.fsm.transitions: {metadata $Transition_decl_MD(actor=actor, transition=it)$}; separator=", "$}
+$actor.actionScheduler.fsm.transitions: { $Transition_MD(actor=actor, transition = it)$}$
+>>
+
+Transition_MD(actor, transition) ::= <<
+$if(transition.nextStateInfo.empty)$
+$Transition_decl_MD(actor=actor, transition = transition)$ = metadata  !{ $varState_MD(transition.sourceState)$, null}
+$else$
+$Transition_decl_MD(actor=actor, transition = transition)$ = metadata  !{ $varState_MD(transition.sourceState)$, metadata $NextStates_decl_MD(actor=actor, nextStates=transition.nextStateInfo)$}
+$NextStates_MD(actor= actor, nextStates=transition.nextStateInfo)$
+$endif$
+>>
+
+NextStates_MD(actor, nextStates) ::= <<
+$NextStates_decl_MD(actor=actor, nextStates = nextStates)$ = metadata !{$nextStates: { metadata $NextState_decl_MD(actor =actor, nextState=it)$}; separator=", "$}
+$nextStates: {$NextState_MD(actor=actor, nextState=it)$}$
+>>
+
+NextState_MD(actor, nextState) ::= <<
+$NextState_decl_MD(actor = actor, nextState = nextState)$ = metadata !{metadata $action_decl_MD(actor=actor, action=nextState.action)$, $varState_MD(nextState.targetState)$}
+
+>>
+
+Type_MD(actor, var) ::= <<
+$Type_decl_MD(actor=actor, var=var)$ = metadata  !{$varType_MD(var.type)$, $varSize_MD(var.type)$}
+
+>>
+
+Sched_MD(actor, action) ::= <<
+$Sched_decl_MD(actor=actor, action=action)$ = metadata  !{$varName_MD(action.scheduler)$, $procExtern_MD(action.scheduler)$, i1()* @$action.scheduler$}
+
+>>
+
+Tag_MD(actor, tag)::=<<
+$Tag_decl_MD(actor=actor, tag=tag)$ = metadata  !{$tag.identifiers: varIdentifier_MD() ; separator=", "$}
+>>
+
+
+VarDef_MD(actor, var) ::= <<
+$VarDef_decl_MD(actor=actor, var=var)$ = metadata !{$varName_MD(var)$, $varAssignable_MD(var)$, $varSuffix_MD(var)$,  $varIndex_MD(var)$}
+
+>>
+
+
+Body_MD(actor, action) ::= <<
+$Body_decl_MD(actor=actor, action=action)$ = metadata  !{$varName_MD(action.body)$, $procExtern_MD(action.body)$, void()* @$action.body$}
+
+>>
+
+///////////////////////////////////////////////////////////////////////////////
+// MoC MD data
+///////////////////////////////////////////////////////////////////////////////
+
+MoC_MD(actor)::= <<
+$MoC_decl_MD(actor=actor)$ = metadata !{$MoCName_MD(actor.MoC)$}
+>>
+
+MoCName_MD(MoC)::= <<
+metadata !$
+if(MoC.quasiStatic)$ "QuasiStatic"$
+endif$$
+if(MoC.CSDF)$$
+	if(MoC.SDF)$"SDF"$
+	else$"CSDF"$
+	endif$$
+endif$$
+if(MoC.DPN)$"DPN"$
+endif$$
+if(MoC.KPN)$"KPN"$
+endif$
+>>
+///////////////////////////////////////////////////////////////////////////////
+// Actor MD data
+///////////////////////////////////////////////////////////////////////////////
+
+
+varType_MD(type) ::= <<
+$if(type.int)$ i32 $type.size$ $
+elseif(type.uint)$ i32 $type.size$ $
+elseif(type.bool)$ i32 1 $ 
+elseif(type.list)$$varType_MD(type.elementType)$$
+elseif(type.string)$ i32 8 $
+endif$
+>>
+
+varAssignable_MD(var) ::= <<
+i1 $if(var.assignable)$1$else$0$endif$
+>>
+
+varSuffix_MD(var) ::= <<
+i32 $if(var.suffix)$$var.suffix$$else$0$endif$
+>>
+
+varIndex_MD(var) ::= <<
+i32 $if(var.index)$$var.index$$else$0$endif$
+>>
+
+procExtern_MD(proc) ::= <<
+$if(proc.external)$i1 1$else$i1 0$endif$
+>>
+
+procRetType_MD(proc) ::= <<
+metadata !"$proc.returnType$"
+>>
+
+
+varSize_MD(type) ::= <<
+$if(type.list)$ $type.dimensions: {dim | i32 $dim$}; separator=", "$ $
+else$ null $endif$
+>>
+
+varName_MD(var) ::= <<
+metadata !"$var.name$"
+>>
+
+
+file_MD(actor) ::= <<
+metadata !"$actor.file$"
+>>
+
+varState_MD(state) ::= <<
+metadata !"$state$"
+>>
+
+varIdentifier_MD(identifier) ::= <<
+metadata !"$identifier$"
+>>
+
+
+
+
+
+
+

@@ -1,0 +1,351 @@
+///////////////////////////////////////////////////////////////////////////////
+// Functions for generating schedules
+///////////////////////////////////////////////////////////////////////////////
+printActionName() ::= <<
+printf("$instance.Id$.$action.name$();\n");
+>>
+
+///////////////////////////////////////////////////////////////////////////////
+// Port declaration
+///////////////////////////////////////////////////////////////////////////////
+
+// TODO: the [1] is not OK, it did not work with the "port.type.dimensions"
+
+portDeclaration(port) ::= <<
+	$port.type$ $port$[1];
+>>
+
+///////////////////////////////////////////////////////////////////////////////
+// parameters
+///////////////////////////////////////////////////////////////////////////////
+
+// the dimensions of a list: [dim1][dim2]...[dimn]
+// does not output anything if $value$ is empty
+listSize(value) ::= <<
+$value : {[$it$]} $
+>>
+
+variableDeclaration(variable) ::= <<
+$
+if(variable.port)
+$$
+else
+$$variable.type$ $variable$$listSize(variable.type.dimensions)$$
+endif
+$
+>>
+
+
+///////////////////////////////////////////////////////////////////////////////
+// Constants
+///////////////////////////////////////////////////////////////////////////////
+
+Constant(constant) ::= <<
+$(constant.class.simpleName)(constant)$
+>>
+
+BoolExpr(constant) ::= <<
+$if (constant.value)$1$else$0$endif$
+>>
+
+IntExpr(number) ::= <<
+$number$$if (number.long)$L$endif$
+>>
+
+// the values of a list: {val1, val2, ..., valn}
+ListExpr(constant) ::= <<
+{$constant.value: Constant(); wrap, separator=", "$}
+>>
+
+StringExpr(constant) ::= <<
+"$constant$"
+>>
+
+///////////////////////////////////////////////////////////////////////////////
+// Instructions
+///////////////////////////////////////////////////////////////////////////////
+
+Assign(assign) ::= <<
+
+$assign.target$ = $assign.value$;
+>>
+
+PrintFormatType(type) ::= <<
+$if (type.bool)
+$i$
+elseif (type.float)
+$f$
+elseif (type.int)
+$$if (type.long)$ll$endif$i$
+elseif (type.list)
+$p$
+elseif (type.string)
+$s$
+elseif (type.uint)
+$$if (type.long)$ll$endif$u$
+elseif (type.void)
+$p$
+endif$
+>>
+
+PrintFormat(parameter) ::= <<
+$if (parameter.stringExpr)
+$"$parameter$"$
+else
+$ "%$PrintFormatType(parameter.type)$" $
+endif$
+>>
+
+PrintParameter(parameter) ::= <<
+$if (!parameter.stringExpr)$, $parameter$$endif$
+>>
+
+Call(call) ::= << 
+//ERROR this function call must be removed
+>>
+
+Decrement(decrement) ::= <<
+
+$decrement.target$--;
+>>
+
+Increment(increment) ::= <<
+
+$increment.target$++;
+>>
+
+Load(load) ::= <<
+
+$load.target$ = $load.source$$load.indexes : {[$it$]}$;
+>>
+
+Peek(peek) ::= <<
+chan_$instance.id$_$peek.port$?\<$peek.target$\>;
+>>
+
+Read(read) ::= <<
+
+$if (read.target)$
+chan_$instance.id$_$read.port$?$read.target$[0];
+$endif$
+>>
+
+SelfAssignment(selfAssign) ::= <<
+
+$selfAssign.target$ $selfAssign.op.text$= $selfAssign.value$;
+>>
+
+Store(store) ::= <<
+
+$store.target$$store.indexes : {[$it$]}$ = $store.value$;
+>>
+
+Write(write) ::= <<
+
+chan_$instance.id$_$write.port$!$write.target$[0];
+>>
+
+Return(return) ::= <<
+
+>>
+
+///////////////////////////////////////////////////////////////////////////////
+// Nodes 
+///////////////////////////////////////////////////////////////////////////////
+
+instructions(instructions) ::= <<
+$instructions: {$(it.class.simpleName)(it)$}$
+>>
+
+nodes(nodes) ::= <<
+$nodes: {$(it.class.simpleName)(it)$}$
+>>
+
+// if node
+BlockNode(blockNode) ::= <<
+$instructions(blockNode.instructions)$
+>>
+
+// if node
+IfNode(ifNode) ::= <<
+
+if 
+:: ($ifNode.value$) -\>
+	$nodes(ifNode.thenNodes)$
+$if(ifNode.elseNodes)$:: else -\>
+	$nodes(ifNode.elseNodes)$
+$endif$
+fi;
+$BlockNode(ifNode.joinNode)$
+>>
+
+// while node
+WhileNode(whileNode) ::= <<
+
+do 
+:: $whileNode.value$ -\>
+	$nodes(whileNode.nodes)$
+:: else -\> break;
+od
+}
+$BlockNode(whileNode.joinNode)$
+>>
+
+
+///////////////////////////////////////////////////////////////////////////////
+// State variable declaration
+///////////////////////////////////////////////////////////////////////////////
+
+stateVar(var) ::= <<
+$if (var.initialized)$
+$variableDeclaration(var)$ = $Constant(var.initialValue)$;
+$else$
+$variableDeclaration(var)$;
+$endif$
+>>
+
+
+///////////////////////////////////////////////////////////////////////////////
+// Scheduler with fsm
+///////////////////////////////////////////////////////////////////////////////
+
+newState() ::= << 
+:: state == state_$fsm_trans.SourceState$ -\> {
+	$fsm_trans.NextStateInfo: { fsm_nsi | $fsm_nsi.action: peeks()$}$
+	if
+	$fsm_trans.NextStateInfo: {
+			fsm_nsi|
+:: $fsm_nsi.action: schedulerFSM(); separator="\n"$ }$
+	fi;}
+>>
+
+schedulerFSM(action) ::= <<
+	/* $action.name$ */ atomic { 
+	$guardFSM()$ $inputChannelCheck(action.inputPattern)$ $outputChannelCheck(action.outputPattern)$
+	-\> 
+	/* Temp variables*/
+	$if(action.body.locals.list)$
+	$action.body.locals.list: { var | $if(!var.port)$ $variableDeclaration(var)$;$\n$$endif$}$
+	$endif$ 
+	$printActionName()$
+	$inputPattern(action.inputPattern)$
+	$action.body.nodes: {$(it.class.simpleName)(it)$}$
+	$outputPattern(action.outputPattern)$
+	state = state_$fsm_nsi.targetState$;
+}
+>>
+
+guardFSM() ::= <<
+$if (options.guards.(action))$
+ $options.guards.(action); separator=" && "$
+$else$
+skip
+$endif$
+>>
+
+peeks(action) ::= <<
+	$options.loads.(action): { p | $p.Target.type$ $p.Target$;}$
+	$options.peeks.(action): { p | chan_$instance.id$_$p.port$?\<$p.port$[0]\>;}$
+	$options.loads.(action): { p | $p.Target$ = $p.Source$[0];}$
+
+>>
+
+
+///////////////////////////////////////////////////////////////////////////////
+// Scheduler without fsm
+///////////////////////////////////////////////////////////////////////////////
+
+scheduler(action) ::= <<
+:: /* $action.name$ */ atomic { 
+	$guard()$ $inputChannelCheck(action.inputPattern)$ $outputChannelCheck(action.outputPattern)$
+	-\>
+	/* Temp variables*/
+	$if(action.body.locals.list)$
+	$action.body.locals.list: {var | $if(!var.port)$$variableDeclaration(var)$;$\n$$endif$}$
+	$endif$ 
+	$printActionName()$
+	$inputPattern(action.inputPattern)$
+	$action.body.nodes: {$(it.class.simpleName)(it)$}$
+	$outputPattern(action.outputPattern)$
+}	
+>>
+
+guard() ::= <<
+$options.guards.(action); separator=" && "$
+>>
+
+///////////////////////////////////////////////////////////////////////////////
+// Action Templates
+///////////////////////////////////////////////////////////////////////////////
+
+priorities() ::= << 
+$if (rest(options.guards.(action)))$
+ /*priority*/ && !( $rest(options.guards.(action)); separator=" && "$ )
+$endif$
+>> 
+
+inputPatternPort(port) ::= <<
+/*chan_$port.name$?trash;*/
+>>
+
+inputPattern(pattern) ::= <<
+$pattern.keys: inputPatternPort(); separator="\n"$
+>>
+
+outputPatternPort(port) ::= <<
+/*chan_$port$!trash;*/
+>>
+
+outputPattern(pattern) ::= <<
+$pattern.keys: outputPatternPort(); separator="\n"$
+>>
+
+inputChannelCheck(pattern) ::= <<
+$pattern.keys: {key | && nempty(chan_$instance.id$_$key$)} $
+>>
+
+outputChannelCheck(pattern) ::= <<
+$pattern.keys: {key | && nfull(chan_$instance.id$_$key$)} $
+>>
+
+
+
+///////////////////////////////////////////////////////////////////////////////
+// Process declaration
+///////////////////////////////////////////////////////////////////////////////
+
+proctype(instance, actor) ::= <<
+proctype $instance.id$($actor.parameters.list: variableDeclaration(); wrap, separator=", "$) {
+
+	/* State variables */
+	$actor.stateVars.list : stateVar(); separator="\n"$
+	
+	/* Ports */
+    $ [instance.actor.inputs.list, instance.actor.outputs.list] : portDeclaration(); separator="\n"$
+
+	$if (actor.actionScheduler.fsm)$
+	/* States of the FSM */
+	$actor.actionScheduler.fsm.states: {s | int state_$s$ = $i0$;}; separator="\n"$
+	
+	/* Initial State */
+	int state = state_$actor.actionScheduler.fsm.initialState$;
+	
+	do
+	$actor.actionScheduler.fsm.transitions: { fsm_trans| $newState()$ }$
+	od;
+	$else$
+	do
+	$actor.actionScheduler.actions: scheduler(); separator="\n"$
+	od;
+	$endif$
+}
+>>
+
+
+instance(instance, options) ::= <<
+
+
+/* Process */
+$proctype(instance=instance, actor=instance.actor)$
+
+>>

@@ -1,0 +1,780 @@
+///////////////////////////////////////////////////////////////////////////////
+// Common applet
+///////////////////////////////////////////////////////////////////////////////
+portType(port, IOtype, dataType) ::= <<
+<if(port.type.bool)
+><port.name>_<dataType>  :<IOtype>std_logic;<
+else
+><port.name>_<dataType>  :<IOtype>std_logic_vector(<port.type.size> -1 downto 0);<
+endif>
+>>
+
+
+
+///////////////////////////////////////////////////////////////////////////////
+// Print instance's ports
+///////////////////////////////////////////////////////////////////////////////
+PrintInputPorts(port) ::= <<
+<portType(port=port, IOtype=" in  ", dataType="data")>
+<port.name>_send  : in  std_logic;
+<port.name>_ack   : out  std_logic;
+
+>>
+
+PrintOutputPorts(port) ::= <<
+<portType(port=port, IOtype=" out ", dataType="data")>
+<port.name>_send  : out std_logic;
+<if(last(port.name))
+><port.name>_ack   : in  std_logic<
+else
+><port.name>_ack   : in  std_logic;<
+endif>
+>>
+
+
+
+///////////////////////////////////////////////////////////////////////////////
+// Print signal and constant
+///////////////////////////////////////////////////////////////////////////////
+
+// the dimensions of a list: [dim1][dim2]...[dimn]
+// does not output anything if <value> is empty
+listSize(values) ::= <<
+<values : {value | <value>}; separator=" * ">
+>>
+
+// These signals are used by the IOs management processes
+IOsManagementSignals(port)::= <<
+signal <port.name>_rdy   : std_logic;
+signal <port.name>_isend : std_logic;
+signal <portType(port=port, IOtype="", dataType="idata")>
+>>
+
+signalDeclaration(variable) ::= <<
+<if(variable.port)>
+signal <variable> : <variable.type>;<
+else>
+  <if(!variable.type.list)>
+    <if(!variable.assignable)>
+constant <variable> : <variable.type> := <variable.initialValue>;<
+    else
+>signal <variable> : <variable.type>;<
+    endif><
+  else>
+    <if(!variable.assignable)
+      ><if(variable.initialized)
+>type memory_type_<variable> is array (0 to <listSize(variable.type.dimensions)> -1) of <variable.type>;
+constant <variable> : memory_type_<variable> := <variable.initialValue>;<
+      endif><
+    else
+>type memory_type_<variable> is array (0 to <listSize(variable.type.dimensions)> -1) of <variable.type>;
+signal <variable> : memory_type_<variable>;<
+    endif><
+  endif><
+endif>
+>>
+
+
+
+///////////////////////////////////////////////////////////////////////////////
+// Print variables
+///////////////////////////////////////////////////////////////////////////////
+variableDeclaration(variable) ::= <<
+<if(variable.type.list)
+>-- error !!!!! variable <variable> : <variable.type> (0 to <listSize(variable.type.dimensions)> -1)<
+else
+>variable <variable> : <variable.type><
+endif
+>
+>>
+
+
+
+///////////////////////////////////////////////////////////////////////////////
+// Init at reset
+///////////////////////////////////////////////////////////////////////////////
+stateConst(variable) ::= <<
+<if(variable.initialized)
+  ><if(variable.assignable)
+>    <variable> \<= <variable.initialValue>;
+<
+  endif><
+endif>
+>>
+
+
+
+///////////////////////////////////////////////////////////////////////////////
+// Print cast operations (when source.size != target.size)
+///////////////////////////////////////////////////////////////////////////////
+CastStore(target, value, cast)::= <<
+<
+if(cast.extended)
+><target> := <value><
+else
+><
+  if(target.type.uint)
+>
+<target> := ucast(<value>, <value.type.size>, <target.type.size>)<  
+  else
+>
+<target> := cast(<value>, <value.type.size>, <target.type.size>)<  
+  endif
+><
+endif
+>
+
+>>
+
+CastLoad(target, source, cast)::= <<
+<
+if(cast.extended)
+><target> := <source><
+else
+><
+  if(target.type.uint)
+>
+<target> := ucast(<source>, <source.type.size>, <target.variable.type.size>)<
+  else
+>
+<target> := cast(<source>, <source.type.size>, <target.variable.type.size>)<
+  endif
+><
+endif
+>
+
+>>
+
+
+
+///////////////////////////////////////////////////////////////////////////////
+// Instructions
+///////////////////////////////////////////////////////////////////////////////
+Assign(assign) ::= <<
+
+<if (assign.cast)
+><CastStore(target=assign.target, value=assign.value, cast=assign.cast)>;<
+else
+><assign.target> := <assign.value>;<
+endif
+>
+>>
+
+AssignIndex(AssignIndex) ::= <<
+
+<AssignIndex.target> := to_integer(unsigned(<AssignIndex.indexes: {index | std_logic_vector(to_unsigned(<index>, <index.type.size>))}; separator=" & ">));
+>>
+
+Call(call) ::= <<
+
+<
+if(call.target)
+>
+<call.target> := <call.procedure>(<call.procedure.loadedVariables: {var | <var>, }><call.parameters: {param | <param>, }>'1');<
+elseif(call.parameters)
+>
+<call.procedure>(<call.parameters; separator=", ">, '1');<
+else
+>
+<call.procedure>('1');<
+endif
+>
+>>
+
+Load(load) ::= <<
+
+<if(load.indexes)
+><
+  if(load.source.variable.port)
+  ><
+    if(load.cast)
+><CastLoad(target=load.target, source=load.source, cast=load.cast)>;<
+    else
+><load.target> := <load.source>;<
+    endif
+  ><
+  else
+><load.target> := <load.source>(<load.indexes : {index | <index>}; separator=", ">);<
+  endif
+><
+else
+><load.target> := <load.source>;<
+endif>
+>>
+
+Peek(peek) ::= <<
+
+<if(peek.unit)
+  ><
+  if(peek.target.type.bool)
+><peek.target> := <peek.port>_data;<
+  else
+  ><
+    if(peek.target.type.int)
+><peek.target> := to_integer(signed(<peek.port>_data));<
+    else
+><peek.target> := to_integer(unsigned(<peek.port>_data));<
+    endif
+  ><
+  endif
+><
+else
+>-- peek multiple token not coded yet<
+endif
+>
+
+>>
+
+Read(read) ::= <<
+
+<
+if(read.unit)
+><
+  if(read.target.type.bool)
+  >
+<read.target> := <read.port>_data;<
+  elseif(read.target.type.int)
+  >
+<read.target> := to_integer(signed(<read.port>_data));<
+  elseif (read.target)
+  >
+<read.target> := to_integer(unsigned(<read.port>_data));<
+  endif
+  ><
+else
+>-- read multiple token not coded yet<
+endif>
+>>
+
+// a "return" must be transformed when the attribute "transformReturn"
+// is present, which normally only occurs when printActionSchedulerInline
+// is called
+Return(return) ::= <<
+
+<
+if(return.value)
+><
+  if(transformReturn)
+>
+<procedure>_go := <return.value>;<
+  else
+>
+return <return.value>;<
+  endif
+><
+endif>
+>>
+
+Store(store) ::= <<
+
+<if(store.indexes)
+><
+  if(store.target.port)
+  ><
+    if(store.cast)
+><CastStore(value=store.value, target=store.target, cast=store.cast)>;<
+    else
+><store.target> := <store.value>;<
+    endif
+  ><
+  else
+>
+<store.target>(<store.indexes : {index | <index>}; separator=", ">) \<= <store.value>;<
+  endif
+><
+else
+>
+<store.target> \<= <store.value>;<
+endif>
+>>
+
+Write(write) ::= <<
+
+<if(write.target.type.bool)
+><write.port>_idata \<= <write.target>;<
+elseif(write.target.type.int)
+><write.port>_idata \<= std_logic_vector(to_signed(<write.target>, <write.port.type.size>));<
+else
+><write.port>_idata \<= std_logic_vector(to_unsigned(<write.target>, <write.port.type.size>));<
+endif>
+>>
+
+
+
+///////////////////////////////////////////////////////////////////////////////
+// Nodes
+///////////////////////////////////////////////////////////////////////////////
+printInstructions(instructions) ::= <<
+<instructions: {inst | <(inst.class.simpleName)(inst)>}>
+>>
+
+printNodes(nodes) ::= <<
+<nodes: {node | <(node.class.simpleName)(node)>}>
+>>
+
+// if node
+BlockNode(blockNode) ::= <<
+<printInstructions(blockNode.instructions)>
+>>
+
+// if node
+IfNode(ifNode) ::= <<
+
+if (<ifNode.value>) then
+  <printNodes(ifNode.thenNodes)><if(ifNode.elseNodes)>
+else
+  <printNodes(ifNode.elseNodes)>
+end if;<endif>
+<BlockNode(ifNode.joinNode)>
+>>
+
+// while node
+WhileNode(whileNode) ::= <<
+
+while (<whileNode.value>) loop
+  <printNodes(whileNode.nodes)><BlockNode(whileNode.joinNode)>
+end loop;
+>>
+
+
+
+///////////////////////////////////////////////////////////////////////////////
+// Prints functions
+///////////////////////////////////////////////////////////////////////////////
+function(procedure, transformReturn) ::= <<
+<if (!procedure.external)
+  ><if (procedure.returnType.void)
+>procedure <procedure>(<parameters(procedure.parameters.list)>dummy : std_logic) is<
+  else
+>function <procedure>(<VarUsed(procedure)><parameters(procedure)>dummy : std_logic) <returnFunction(procedure.returnType) > is<
+  endif>
+  <if(procedure.locals.list)
+><procedure.locals.list: {<VarInFctDeclaration()>;<\n>}><
+  endif>
+begin
+  <printNodes(procedure.nodes)>
+end <procedure>;<
+endif>
+
+>>
+
+VarUsed(procedure) ::= <<
+<procedure.loadedVariables: functionParameter(); wrap>
+>>
+
+parameters(procedure) ::= <<
+<procedure.parameters.list: functionParameter()>
+>>
+
+functionParameter(variable) ::= <<
+<if(!variable.type.list)
+><variable> : <typeFunction(variable.type)>; <
+else
+>-- error !!!!! type memory type<
+endif
+>
+>>
+
+VarInFctDeclaration(variable) ::= <<
+<if(variable.port)
+>  variable <variable> : <typeFunction(variable.type)><
+elseif(!variable.type.list)
+>  variable <variable> : <typeFunction(variable.type)><
+else
+>  -- error !!!!! type memory_type<
+endif>
+>>
+
+
+returnFunction(type) ::= <<
+<if(type.bool)
+>return std_logic<
+elseif(type.int)
+>return integer<
+endif>
+>>
+
+typeFunction(type) ::= <<
+<if(type.bool)
+>std_logic<
+elseif(type.int)
+>integer<
+else
+>integer<
+endif>
+>>
+
+
+
+///////////////////////////////////////////////////////////////////////////////
+// Action
+///////////////////////////////////////////////////////////////////////////////
+procedure(procedure, transformReturn) ::= <<
+<printNodes(procedure.nodes)>
+>>
+
+printLocals(procedure) ::= <<
+<if(procedure.locals.list)
+><procedure.locals.list: {<variableDeclaration()>;<\n>}><
+endif>
+>>
+
+printActionLocalSchedul(action) ::= <<
+<printLocals(action.scheduler)
+>variable <action.scheduler>_go : std_logic;
+
+>>
+
+printActionLocalBody(action) ::= <<
+<printLocals(action.body)>
+>>
+
+// prints the body of the given action "inline" (ie not within a function)
+printActionBodyInline(action) ::= <<
+<procedure(procedure=action.body)>
+>>
+
+
+
+///////////////////////////////////////////////////////////////////////////////
+// Management of Outputs 
+///////////////////////////////////////////////////////////////////////////////
+OutputsManag() ::= <<
+out_management : process (clock, reset_n) is
+begin
+  if reset_n = '0' then
+    <actor.outputs.list : OutputsReset(); separator="\n">
+    --
+    <actor.outputs.list : {port|<port.name>FSM_out \<= waitSend;}; separator="\n">
+  --
+  elsif rising_edge(clock) then
+    <actor.outputs.list : FSM_outputs(); separator="\n\n">
+  end if;
+end process out_management;
+>>
+
+FSM_outputs(port) ::= <<
+case <port.name>FSM_out is
+  when waitSend =\>
+    if <port.name>_isend = '1' then
+      <port.name>_rdy    \<= '1';
+      <port.name>_send   \<= '1';
+      <port.name>_data   \<= <port.name>_idata;
+      <port.name>FSM_out \<= waitAck;
+    else
+      <port.name>_rdy    \<= '1';
+      <port.name>_send   \<= '0';
+      <port.name>FSM_out \<= waitSend;
+    end if;
+  --
+  when waitAck =\>
+    if <port.name>_ack = '1' and <port.name>_isend = '1' then
+      <port.name>_rdy    \<= '1';
+      <port.name>_send   \<= '1';
+      <port.name>_data   \<= <port.name>_idata;            
+      <port.name>FSM_out \<= waitAck;
+    elsif <port.name>_ack = '1' then
+      <port.name>_rdy    \<= '1';
+      <port.name>_send   \<= '0';
+      <port.name>FSM_out \<= waitSend;
+    else
+      <port.name>_rdy    \<= '0';
+      <port.name>_send   \<= '1';
+      <port.name>_data   \<= <port.name>_idata;            
+      <port.name>FSM_out \<= waitAck;
+    end if;
+  --
+  when others =\> null;
+end case;
+>>
+
+OutputsReset(port) ::= <<
+<if(port.type.bool)
+><port.name>_data \<= '0';<
+else
+><port.name>_data \<= (others =\> '0');<
+endif>
+
+<port.name>_rdy  \<= '0';     
+<port.name>_send \<= '0';
+>>
+
+
+
+///////////////////////////////////////////////////////////////////////////////
+// Actor VHDL Architecture - Scheduler process
+///////////////////////////////////////////////////////////////////////////////
+Actor_Scheduler(actor) ::= <<
+<actor.simpleName>_sceduler : process(<sensitivity(actor)>)
+  <actor.actions : printActionLocalSchedul()>--
+begin
+  <actor.actions: printTemplateDataScheduler(); separator="\n\n">
+
+  --
+  -- Test the action's inputs to fire (or not) an action  
+  <actor.actions : {actions|<actions>_go \<= '0';}; separator="\n">
+  <actor.inputs.list :{port|<port.name>_ack \<= '0';}; separator="\n">  
+<if(actor.actionScheduler.fsm)    
+>  <printActionFireFSM(actions=actor.actionScheduler.actions, fsm=actor.actionScheduler.fsm)><
+else  
+>  if <actor.actions: printActionFire(); separator="\n  elsif">
+  end if;<
+endif>
+
+end process;
+
+>>
+
+// print the sensitivity list of the actor
+sensitivity(actor) ::= <<
+<actor.inputs.list: {port|<port.name>_send}; separator=", "><
+if(actor.inputs.list)
+><if(actor.outputs.list || actor.templateData)
+>, <
+endif><
+endif
+><actor.outputs.list: {port|<port.name>_rdy}; separator=", "><
+if(actor.outputs.list)
+><if(actor.actionScheduler.fsm || actor.templateData)
+>, <
+endif><
+endif
+><actor.templateData: {d|<d>}; separator=", "><
+if(actor.templateData && actor.actionScheduler.fsm)    
+>, FSM<
+elseif(actor.actionScheduler.fsm)
+>FSM<
+endif>
+>>
+
+// prints the scheduler of the given action according to the actor's template data
+printTemplateDataScheduler(action) ::= <<
+-- test if "<action>" action is schedulable
+<procedure(procedure=action.scheduler, transformReturn="true")>
+>>
+
+
+printActionFire(action) ::= <<
+((isSchedulable_<action>_go <action.inputPattern.keys : {port| and <port.name>_send }>) = '1') then
+<if(action.inputPattern.keys)
+>< if(action.outputPattern.keys)
+>    <action>_go  \<= isSchedulable_<action>_go and <action.outputPattern.keys : {port|<port.name>_rdy}; separator=" and ">;
+    <action.inputPattern.keys : {
+      port|<port.name>_ack \<= isSchedulable_<action>_go and <action.outputPattern.keys : {port|<port.name>_rdy}; separator=" and ">} ; separator=";\n">;<
+  else
+>    <action>_go  \<= isSchedulable_<action>_go;
+    <action.inputPattern.keys : {port|<port.name>_ack \<= isSchedulable_<action>_go;} ; separator="\n"><
+  endif><
+else
+>    <action>_go  \<= isSchedulable_<action>_go;<
+endif>  
+>>
+
+printActionFireFSM(actions, fsm) ::= <<
+<if(actions)
+>if<printActionFire(actions)>
+else
+  case FSM is
+  <TransitionFire()>
+      end case;
+end if;<
+else
+>  case FSM is
+<fsm.transitions: TransitionFire(); separator="\n\n">
+  end case;<
+endif>
+>>
+
+TransitionFire(transition) ::= <<
+    when s_<transition.sourceState> =\>
+      if <transition.nextStateInfo: actionFire(); separator="\n      elsif">
+      end if;
+>>
+
+actionFire(nextstate) ::= <<
+    <printActionFire(nextstate.action)>
+>>
+
+
+
+///////////////////////////////////////////////////////////////////////////////
+// Actor VHDL Architecture - Execute process
+///////////////////////////////////////////////////////////////////////////////
+Actor_Exec(actor) ::= <<
+<actor.simpleName>_execute : process (reset_n, clock) is
+  <actor.actions: printActionLocalBody()>  --
+begin
+  if reset_n = '0' then
+<if(actor.stateVars.list)
+><actor.stateVars.list: stateConst()>    --<
+endif>
+    <actor.outputs.list : port_out_init()>
+<if(actor.actionScheduler.fsm)    
+>    FSM    \<= s_<actor.actionScheduler.fsm.initialState>;
+<
+endif>  --
+  elsif rising_edge(clock) then
+    <actor.outputs.list :{port|<port.name>_isend \<= '0';}; separator="\n">
+    --  
+<if(actor.actionScheduler.fsm)    
+>    <executeCoreFSM(actions=actor.actionScheduler.actions, fsm=actor.actionScheduler.fsm)><
+else
+>    <executeCore(actor.actions)><
+endif>
+
+  end if;
+end process <actor.simpleName>_execute;
+
+>>
+
+actionTestSceduler(action) ::= <<
+(<action>_go = '1') then
+  -- body of "<action>" action
+  <printActionBodyInline(action)>  --<actor.outputs.list: writeManagement()>
+>>
+
+writeManagement(port) ::= <<
+<if(action.outputPattern.(port))
+>
+  <port.name>_isend \<= '1';<
+endif>
+>>
+
+port_out_init(port) ::=<<
+
+<port.name>_isend \<= '0';
+<if(port.type.bool)
+><port.name>_idata  \<= '0';<
+else
+><port.name>_idata  \<= (others =\> '0');<
+endif>
+>>
+
+///////////////////////////////////////////////////////////////////////////////
+// Core of an action - NO FSM
+
+executeCore(actions) ::= <<
+    if <executeIndent(actions)>
+>>
+
+// just to have a correct indentation
+executeIndent(actions) ::= <<
+    <actions: actionTestSceduler(); separator="\nelsif ">
+    end if;
+>>
+
+///////////////////////////////////////////////////////////////////////////////
+// Core of an action - WITH FSM
+
+executeCoreFSM(actions, fsm) ::= <<
+<if(actions)
+><executeCore(actions)>
+else
+  case FSM is
+  <switchTransition()>
+      end case;
+end if;<
+else
+>    case FSM is
+  <fsm.transitions: switchTransition(); separator="\n\n">
+    end case;<
+endif>
+>>
+
+switchTransition(transition) ::= <<
+    when s_<transition.sourceState> =\>
+      if <transition.nextStateInfo: actionTestState(); separator="\n      elsif">
+      end if;
+>>
+
+actionTestState(nextState) ::= <<
+      <actionTestSceduler(nextState.action)>
+        FSM \<= s_<nextState.targetState>;
+>>
+
+
+
+///////////////////////////////////////////////////////////////////////////////
+// Print the actor
+///////////////////////////////////////////////////////////////////////////////
+actor(actor, options) ::= <<
+-------------------------------------------------------------------------------
+-- Title      : Actor: <actor.simpleName>
+-- Project    : 
+-------------------------------------------------------------------------------
+-- File       : <actor.name>.vhd
+-- Author     : Orcc - VHDL
+-- Company    : 
+-- Created    : 
+-- Standard   : VHDL'93
+-------------------------------------------------------------------------------
+-- Copyright (c)  
+-------------------------------------------------------------------------------
+-- Revisions  :
+-- Date        Version  Author  Description
+-- 
+-------------------------------------------------------------------------------
+
+
+------------------------------------------------------------------------------
+library ieee;
+use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
+
+library work;
+use work.orcc_package.all;
+
+
+------------------------------------------------------------------------------
+entity <actor.simpleName> is
+  port (
+  -- Inputs
+  clock    : in  std_logic;
+  reset_n  : in  std_logic;
+  <actor.inputs.list: PrintInputPorts()>  -- Outputs
+  <actor.outputs.list: PrintOutputPorts(); separator=";\n">);  
+end <actor.simpleName>;
+
+
+------------------------------------------------------------------------------
+architecture rtl_<actor.simpleName> of <actor.simpleName> is
+
+  ---------------------------------------------------------------------------
+  -- Signal & constant declaration
+  ---------------------------------------------------------------------------
+  <actor.actions:       {action| signal <action>_go    : std_logic;}; separator="\n">
+  --
+  <actor.outputs.list :IOsManagementSignals(); separator="\n">
+  --
+  <actor.stateVars.list: signalDeclaration()>
+
+<if (actor.procs.list)
+>  ---------------------------------------------------------------------------
+  -- Functions and procedures
+  ---------------------------------------------------------------------------
+  <actor.procs.list: {proc|<function(procedure=proc)>}; separator="\n"><
+endif>
+
+  ---------------------------------------------------------------------------
+  -- FSM
+  ---------------------------------------------------------------------------
+  type FSM_out_type is (waitSend, waitAck);
+  <actor.outputs.list : {port| signal <port.name>FSM_out : FSM_out_type;}; separator="\n">
+  <if(actor.actionScheduler.fsm)
+  >  --
+  type FSM_type is (<actor.actionScheduler.fsm.states: {state|s_<state>}; separator=", ">);
+  signal FSM : FSM_type;<
+  endif>
+
+
+begin
+
+  <Actor_Scheduler(actor)>
+  
+  <Actor_Exec(actor)>
+
+  <OutputsManag()>
+
+end architecture rtl_<actor.simpleName>;
+
+>>

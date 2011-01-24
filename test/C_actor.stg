@@ -1,0 +1,462 @@
+///////////////////////////////////////////////////////////////////////////////
+// FIFO declaration
+///////////////////////////////////////////////////////////////////////////////
+
+fifo(port) ::= <<
+extern struct fifo_<port.type>_s *<instance.id>_<port.name>;
+
+>>
+
+///////////////////////////////////////////////////////////////////////////////
+// Types and variables
+///////////////////////////////////////////////////////////////////////////////
+
+// the dimensions of a list: [dim1][dim2]...[dimn]
+// does not output anything if <value> is empty
+listSize(values) ::= <<
+<values : {value | [<value>]} >
+>>
+
+varDecl(variable) ::= <<
+<
+if(variable.port)
+><variable.type> <variable>_buf<listSize(variable.type.dimensions)>;
+<variable.type> *<variable><
+else
+><variable.type> <variable><listSize(variable.type.dimensions)><
+endif
+>
+>>
+
+///////////////////////////////////////////////////////////////////////////////
+// Constants
+///////////////////////////////////////////////////////////////////////////////
+
+Constant(constant) ::= <<
+<(constant.class.simpleName)(constant)>
+>>
+
+BoolExpr(constant) ::= <<
+<if (constant.value)>1<else>0<endif>
+>>
+
+IntExpr(number) ::= <<
+<number><if (number.long)>L<endif>
+>>
+
+// the values of a list: {val1, val2, ..., valn}
+ListExpr(constant) ::= <<
+{<constant.value: Constant(); wrap, separator=", ">}
+>>
+
+StringExpr(constant) ::= <<
+"<constant>"
+>>
+
+///////////////////////////////////////////////////////////////////////////////
+// State variables
+///////////////////////////////////////////////////////////////////////////////
+stateVar(variable) ::= <<
+<if(variable.initialized)>
+<if(!variable.assignable && !variable.type.list)>
+#define <variable> <Constant(variable.initialValue)>
+<else>
+static <varDecl(variable)> = <Constant(variable.initialValue)>;
+<endif>
+<else>
+static <varDecl(variable)>;
+<endif>
+>>
+
+///////////////////////////////////////////////////////////////////////////////
+// Instructions
+///////////////////////////////////////////////////////////////////////////////
+
+Assign(assign) ::= <<
+
+<assign.target> = <assign.value>;
+>>
+
+PrintFormatType(type) ::= <<
+<if (type.bool)
+>i<
+elseif (type.float)
+>f<
+elseif (type.int)
+><if (type.long)>ll<endif>i<
+elseif (type.list)
+>p<
+elseif (type.string)
+>s<
+elseif (type.uint)
+><if (type.long)>ll<endif>u<
+elseif (type.void)
+>p<
+endif>
+>>
+
+PrintFormat(parameter) ::= <<
+<if (parameter.stringExpr)
+>"<parameter>"<
+else
+> "%<PrintFormatType(parameter.type)>" <
+endif>
+>>
+
+PrintParameter(parameter) ::= <<
+<if (!parameter.stringExpr)>, <parameter><endif>
+>>
+
+Call(call) ::= <<
+
+<if(call.print)>printf(<call.parameters: PrintFormat()><call.parameters: PrintParameter()>);<
+else
+><if(call.target)><call.target> = <endif><call.procedure>(<call.parameters; separator=", ">);<
+endif>
+>>
+
+Load(load) ::= <<
+
+<load.target> = <load.source><load.indexes : {index | [<index>]}>;
+>>
+
+Peek(peek) ::= <<
+
+<peek.target> = fifo_<peek.port.type>_peek(<instance.id>_<peek.port>, <peek.target>_buf, <peek.numTokens>);
+>>
+
+Read(read) ::= <<
+
+<if (read.target)
+><read.target> = fifo_<read.port.type>_read(<instance.id>_<read.port>, <read.target>_buf, <read.numTokens>);<
+endif>
+>>
+
+ReadEnd(readEnd) ::= <<
+
+fifo_<readEnd.port.type>_read_end(<instance.id>_<readEnd.port>, <readEnd.numTokens>);
+>>
+
+Return(return) ::= <<
+<if(return.value)>
+return <return.value>;<
+endif>
+>>
+
+Store(store) ::= <<
+
+<store.target><store.indexes : {index | [<index>]}> = <store.value>;
+>>
+
+Write(write) ::= <<
+
+<write.target> = fifo_<write.port.type>_write(<instance.id>_<write.port>, <write.target>_buf, <write.numTokens>);
+>>
+
+WriteEnd(writeEnd) ::= <<
+<if(options.("net.sf.orcc.backends.enableTrace"))>
+fifo_<writeEnd.port.type>_trace(<instance.id>_<writeEnd.port>, <writeEnd.target>_buf, "<instance.id>_<writeEnd.port>.txt", <writeEnd.numTokens>);
+<endif>
+fifo_<writeEnd.port.type>_write_end(<instance.id>_<writeEnd.port>, <writeEnd.target>_buf, <writeEnd.numTokens>);
+>>
+
+///////////////////////////////////////////////////////////////////////////////
+// Nodes
+///////////////////////////////////////////////////////////////////////////////
+
+printInstructions(instructions) ::= <<
+<instructions: {instr | <(instr.class.simpleName)(instr)>}>
+>>
+
+printNodes(nodes) ::= <<
+<nodes: {node | <(node.class.simpleName)(node)>}>
+>>
+
+// block node
+BlockNode(blockNode) ::= <<
+<printInstructions(blockNode.instructions)>
+>>
+
+// if node
+IfNode(ifNode) ::= <<
+
+if (<ifNode.value>) {
+	<printNodes(ifNode.thenNodes)>
+}<if(ifNode.elseNodes)> else {
+	<printNodes(ifNode.elseNodes)>
+}<endif>
+<BlockNode(ifNode.joinNode)>
+>>
+
+// while node
+WhileNode(whileNode) ::= <<
+
+while (<whileNode.value>) {
+	<printNodes(whileNode.nodes)>
+}
+<BlockNode(whileNode.joinNode)>
+>>
+
+///////////////////////////////////////////////////////////////////////////////
+// Procedure
+///////////////////////////////////////////////////////////////////////////////
+
+procedure(procedure) ::= <<
+<if(!procedure.external)>
+
+static <procedure.returnType> <procedure>(<
+  procedure.parameters.list: {param | <varDecl(param)>}; wrap, anchor, separator=", ">) {
+<if(procedure.locals.list)>
+	<procedure.locals.list: {local | <varDecl(local)>;<\n>}>
+<endif>
+	<printNodes(procedure.nodes)>
+}
+
+<endif>
+>>
+
+///////////////////////////////////////////////////////////////////////////////
+// Action
+///////////////////////////////////////////////////////////////////////////////
+
+action(action) ::= <<
+<procedure(action.body)><procedure(action.scheduler)>
+>>
+
+///////////////////////////////////////////////////////////////////////////////
+// Action scheduler
+///////////////////////////////////////////////////////////////////////////////
+
+outputPatternPort(port) ::= <<
+if (!fifo_<port.type>_has_room(<instance.id>_<port>, <pattern.(port)>)) {
+	ports |= 0x0<instance.actor.templateData.maskOutput.(port)>;
+}
+>>
+
+outputPattern(pattern) ::= <<
+int ports = 0;
+<pattern.keys: outputPatternPort(); separator="\n">
+if (ports != 0) {
+>>
+
+checkInputPatternPort(port) ::= <<
+fifo_<port.type>_has_tokens(<instance.id>_<port>, <pattern.(port)>)
+>>
+
+checkInputPattern(pattern) ::= <<
+<pattern.keys: { port | <checkInputPatternPort(port)> && }>
+>>
+
+///////////////////////////////////////////////////////////////////////////////
+// Scheduler without FSM
+
+actionCall(action) ::= <<
+<action.body>();
+i++;
+>>
+
+actionTest(action) ::= <<
+if (<checkInputPattern(action.inputPattern)>isSchedulable_<action>()) {
+	<if(action.outputPattern)>
+	<outputPattern(pattern=action.outputPattern)>
+		si-\>num_firings = i;
+		si-\>reason = full;
+		si-\>ports = ports;
+		break;
+	}
+	<endif>
+	<actionCall(action)>
+}>>
+
+schedulingTest(actions) ::= <<
+<actions: actionTest(); separator=" else ">
+>>
+
+scheduler(actions) ::= <<
+void <instance.id>_scheduler(struct schedinfo_s *si) {
+	int i = 0;
+  
+	while (1) {
+		<if(actions)><schedulingTest(actions)><endif> else {
+			si-\>num_firings = i;
+			si-\>reason = starved;
+			si-\>ports = 0x0<instance.actor.templateData.maskInputs>;
+			break;
+		}
+	}
+}
+
+>>
+
+///////////////////////////////////////////////////////////////////////////////
+// Scheduler with FSM
+
+actionCallState(nextState) ::= <<
+<nextState.action.body>();
+i++;
+goto l_<nextState.targetState>;
+>>
+
+actionTestState(nextState) ::= <<
+if (<checkInputPattern(nextState.action.inputPattern)>isSchedulable_<nextState.action>()) {
+	<if(nextState.action.outputPattern)>
+	<outputPattern(nextState.action.outputPattern)>
+		_FSM_state = s_<transition.sourceState>;
+		si-\>num_firings = i;
+		si-\>reason = full;
+		si-\>ports = ports;
+		return;
+	}
+	<endif>
+	<actionCallState(nextState)>
+}>>
+
+schedulingTestState(nextStates) ::= <<
+<nextStates: actionTestState(); separator=" else ">
+>>
+
+Transition(transition) ::= <<
+
+
+l_<transition.sourceState>:
+	<if (actions)>
+	while (outside_FSM_scheduler()) {
+		i++;
+	}
+	<endif>
+	<if (transition.nextStateInfo.empty)>
+	printf("stuck in state \"<transition.sourceState>\" in the instance <instance.id>\n");
+	wait_for_key();
+	exit(1);
+	<else>
+	<schedulingTestState(nextStates=transition.nextStateInfo)> else {
+		_FSM_state = s_<transition.sourceState>;
+		si-\>num_firings = i;
+		si-\>reason = starved;
+		si-\>ports = 0x0<instance.actor.templateData.maskInputsTransition.(transition)>;
+		return;
+	}
+	<endif>
+>>
+
+Transitions(actions, transitions) ::= <<
+<transitions: Transition()>
+>>
+
+switchTransition(transition) ::= <<
+
+case s_<transition.sourceState>:
+	goto l_<transition.sourceState>;
+>>
+
+switch(transitions) ::= <<
+switch (_FSM_state) {
+<transitions: switchTransition()>
+default:
+	printf("unknown state in <instance.id>.c : %s\n", stateNames[_FSM_state]);
+	wait_for_key();
+	exit(1);
+}
+>>
+
+schedulerFSM(actions, fsm) ::= <<
+enum states {
+	s_<first(fsm.states)> = 0,
+	<rest(fsm.states) : {state | s_<state>}; separator=",\n">
+};
+
+static char *stateNames[] = {
+	<fsm.states : {state | "s_<state>"}; separator=",\n">
+};
+
+static enum states _FSM_state = s_<fsm.initialState>;
+
+<if(actions)>
+static int outside_FSM_scheduler() {
+	int i = 0;
+	<schedulingTest(actions)> else {
+		return 0;
+	}
+	return 1;
+}
+<endif>
+
+void <instance.id>_scheduler(struct schedinfo_s *si) {
+	int i = 0;
+
+	// jump to FSM state 
+	<switch(fsm.transitions)>
+
+	// FSM transitions
+<Transitions(actions=actions, transitions=fsm.transitions)>
+}
+
+>>
+
+parameters(parameters) ::= <<
+<parameters.keys: { k | #define <k> <Constant(parameters.(k))>
+}>
+>>
+
+///////////////////////////////////////////////////////////////////////////////
+// Actor
+///////////////////////////////////////////////////////////////////////////////
+
+instance(instance, options) ::= <<
+// <instance.hierarchicalPath>
+// Source file is "<instance.actor.file>"
+
+#include \<stdio.h\>
+#include \<stdlib.h\>
+
+#include "orcc.h"
+#include "orcc_fifo.h"
+#include "orcc_util.h"
+<if(options.("net.sf.orcc.backends.enableTrace"))>
+#include "orcc_trace.h"
+<endif>
+
+////////////////////////////////////////////////////////////////////////////////
+// Input FIFOs
+<instance.actor.inputs.list: fifo()>
+////////////////////////////////////////////////////////////////////////////////
+// Output FIFOs
+<instance.actor.outputs.list: fifo()>
+
+////////////////////////////////////////////////////////////////////////////////
+// Parameter values of the instance
+<parameters(instance.parameters)>
+////////////////////////////////////////////////////////////////////////////////
+// State variables of the actor
+<instance.actor.stateVars.list: stateVar()>
+////////////////////////////////////////////////////////////////////////////////
+// Functions/procedures
+<instance.actor.procs.list: procedure()>
+////////////////////////////////////////////////////////////////////////////////
+// Actions
+<instance.actor.actions: action()>
+<if(instance.actor.initializes)>
+////////////////////////////////////////////////////////////////////////////////
+// Initializes
+<instance.actor.initializes: action()>
+void <instance.id>_initialize(struct schedinfo_s *si) {
+	int res = 1;
+	int i = 0;
+
+	<if(instance.actor.initializes)>
+	do {
+		<schedulingTest(instance.actor.initializes)>
+	} while (0);
+	<endif>
+}
+
+<endif>
+////////////////////////////////////////////////////////////////////////////////
+// Action scheduler
+<if(instance.actor.actionScheduler.fsm)>
+<schedulerFSM(actions=instance.actor.actionScheduler.actions, fsm=instance.actor.actionScheduler.fsm)>
+<else>
+<scheduler(actions=instance.actor.actionScheduler.actions)>
+<endif>
+
+>>
