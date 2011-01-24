@@ -6,7 +6,7 @@ generate st "http://www.sf.net/hastee/ST"
 
 // entry point
 Group:
-	members += GroupMember*;
+	(members += GroupMember)*;
 
 GroupMember:
 	TemplateNamed | Dictionary;
@@ -17,7 +17,7 @@ TemplateNamed:
 	(('<<' template = Template '>>')
 	| ('"' template = TemplateString '"'));
 
-Dictionary: name = ID '[' pairs += DictPair (',' pairs += DictPair)* ']';
+Dictionary: name = ID '::=' '[' pairs += DictPair (',' pairs += DictPair)* ']';
 
 DictPair: key = ExprString ':' (('<<' template = Template '>>')
 	| ('"' template = TemplateString '"'));
@@ -36,10 +36,10 @@ TemplateAnonymous: {TemplateAnonymous} '{'
 
 // elements allowed in named, string, and anonymous templates
 ElementNamed returns Element: ElementCommon | ElementTokenNamed;
-ElementTokenNamed returns ElementToken: token='|' | token='}' | token='"';
+ElementTokenNamed returns ElementToken: token=Token | token='|' | token='}' | token='"';
 
 ElementString returns Element: ElementCommon | ElementTokenString;
-ElementTokenString returns ElementToken: token='|' | token='}';
+ElementTokenString returns ElementToken: token=Token | token='|' | token='}';
 
 ElementAnonymous returns Element: ElementCommon | ElementTokenAnonymous;
 ElementTokenAnonymous returns ElementToken: token=Token | token='"';
@@ -131,7 +131,7 @@ ExprPrimary:
 
 ExprAttribute: attribute=[Attribute|ID];
 
-ExprString: {ExprString} '"' (tokens += (Token | '|' | '}'))* '"';
+ExprString: {ExprString} '"' (tokens += (Token | '|' | '}' | '<<' | '>>'))* '"';
 
 ExprTemplateAnonymous: template = TemplateAnonymous;
 
