@@ -7,64 +7,80 @@ import java.util.Map;
 import java.util.Set;
 
 import net.sf.hastee.st.Attribute;
+import net.sf.hastee.st.DictPair;
 import net.sf.hastee.st.Dictionary;
-import net.sf.hastee.st.ExprTemplate;
+import net.sf.hastee.st.ExprReference;
 import net.sf.hastee.st.Group;
-import net.sf.hastee.st.GroupMember;
-import net.sf.hastee.st.TemplateNamed;
+import net.sf.hastee.st.NamedObject;
+import net.sf.hastee.st.TemplateDef;
 
 import org.eclipse.xtext.EcoreUtil2;
 
 public class ImplicitAttributeSolver {
 
-	private Map<TemplateNamed, Map<String, Attribute>> attrMap;
+	private Map<TemplateDef, Map<String, Attribute>> attrMap;
 
 	public ImplicitAttributeSolver() {
 
 	}
 
-	public Map<TemplateNamed, Map<String, Attribute>> buildAttributeMap(
+	public Map<TemplateDef, Map<String, Attribute>> buildAttributeMap(
 			Group group) {
-		attrMap = new HashMap<TemplateNamed, Map<String, Attribute>>();
-		for (GroupMember member : group.getMembers()) {
-			if (member instanceof TemplateNamed) {
-				TemplateNamed template = (TemplateNamed) member;
-				Set<TemplateNamed> visitedSet = new HashSet<TemplateNamed>();
+		attrMap = new HashMap<TemplateDef, Map<String, Attribute>>();
+		for (NamedObject obj : group.getMembers()) {
+			if (obj.getBody() instanceof TemplateDef) {
+				TemplateDef template = (TemplateDef) obj.getBody();
+				Set<TemplateDef> visitedSet = new HashSet<TemplateDef>();
 				Map<String, Attribute> attributes = new HashMap<String, Attribute>();
 				visitTemplate(visitedSet, attributes, template);
-			} else if (member instanceof Dictionary) {
-				// Dictionary dict = (Dictionary) member;
-				// for (DictPair pair : dict.getPairs()) {
-				// TemplateNamed template = pair.getTemplate();
-				// Set<TemplateNamed> visitedSet = new HashSet<TemplateNamed>();
-				// Map<String, Attribute> attributes = new HashMap<String,
-				// Attribute>();
-				// visitTemplate(visitedSet, attributes, template);
-				// }
+			} else if (obj.getBody() instanceof Dictionary) {
+				Dictionary dict = (Dictionary) obj.getBody();
+				for (DictPair pair : dict.getPairs()) {
+					TemplateDef template = pair.getTemplate();
+					Set<TemplateDef> visitedSet = new HashSet<TemplateDef>();
+					Map<String, Attribute> attributes = new HashMap<String, Attribute>();
+					visitTemplate(visitedSet, attributes, template);
+				}
 			}
 		}
 
 		return attrMap;
 	}
 
-	private void visitTemplate(Set<TemplateNamed> visitedSet,
-			Map<String, Attribute> attributes, TemplateNamed template) {
+	private void visitTemplate(Set<TemplateDef> visitedSet,
+			Map<String, Attribute> attributes, TemplateDef template) {
 		visitedSet.add(template);
 		for (Attribute attribute : template.getArguments()) {
 			attributes.put(attribute.get_name(), attribute);
 		}
 		attrMap.put(template, attributes);
 
-		List<ExprTemplate> templates = EcoreUtil2.getAllContentsOfType(
-				template, ExprTemplate.class);
-		for (ExprTemplate calledTemplate : templates) {
-			if (!visitedSet.contains(calledTemplate.getTemplate())) {
-				Set<TemplateNamed> newVisitedSet = new HashSet<TemplateNamed>(
+		List<TemplateDef> defs = EcoreUtil2.getAllContentsOfType(template,
+				TemplateDef.class);
+		for (TemplateDef innerTemplateDef : defs) {
+			if (!visitedSet.contains(innerTemplateDef)) {
+				Set<TemplateDef> newVisitedSet = new HashSet<TemplateDef>(
 						visitedSet);
 				Map<String, Attribute> newMap = new HashMap<String, Attribute>(
 						attributes);
-				visitTemplate(newVisitedSet, newMap,
-						calledTemplate.getTemplate());
+				visitTemplate(newVisitedSet, newMap, innerTemplateDef);
+			}
+		}
+
+		List<ExprReference> refs = EcoreUtil2.getAllContentsOfType(template,
+				ExprReference.class);
+		for (ExprReference ref : refs) {
+			NamedObject refObj = ref.getObjRef();
+			if (refObj.getBody() instanceof TemplateDef) {
+				TemplateDef innerTemplate = (TemplateDef) refObj.getBody();
+				if (!visitedSet.contains(innerTemplate)) {
+					Set<TemplateDef> newVisitedSet = new HashSet<TemplateDef>(
+							visitedSet);
+					Map<String, Attribute> newMap = new HashMap<String, Attribute>(
+							attributes);
+
+					visitTemplate(newVisitedSet, newMap, innerTemplate);
+				}
 			}
 		}
 	}

@@ -5,8 +5,8 @@ import java.util.List;
 
 import net.sf.hastee.st.Dictionary;
 import net.sf.hastee.st.Group;
-import net.sf.hastee.st.GroupMember;
-import net.sf.hastee.st.TemplateNamed;
+import net.sf.hastee.st.NamedObject;
+import net.sf.hastee.st.TemplateDef;
 
 import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.ecore.resource.Resource;
@@ -41,8 +41,8 @@ public class Main {
 			}
 		}
 
-		for (GroupMember member : group.getMembers()) {
-			if (member instanceof TemplateNamed) {
+		for (NamedObject member : group.getMembers()) {
+			if (member instanceof TemplateDef) {
 				System.out.print(member.getName() + '(');
 				System.out.println(") ::= <<");
 				System.out.println(">>");

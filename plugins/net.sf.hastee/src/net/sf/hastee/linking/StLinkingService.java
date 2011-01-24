@@ -7,9 +7,10 @@ import java.util.Map;
 
 import net.sf.hastee.st.Attribute;
 import net.sf.hastee.st.Group;
-import net.sf.hastee.st.TemplateNamed;
+import net.sf.hastee.st.NamedObject;
 import net.sf.hastee.st.StFactory;
 import net.sf.hastee.st.StPackage;
+import net.sf.hastee.st.TemplateDef;
 
 import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.ecore.EClass;
@@ -30,7 +31,7 @@ import org.eclipse.xtext.util.OnChangeEvictingCache;
  */
 public class StLinkingService extends DefaultLinkingService {
 
-	private Map<String, TemplateNamed> functions;
+	private Map<String, NamedObject> functions;
 
 	private Attribute i0;
 
@@ -40,7 +41,7 @@ public class StLinkingService extends DefaultLinkingService {
 	 * Creates a new ST linking service which creates builtin functions.
 	 */
 	public StLinkingService() {
-		functions = new HashMap<String, TemplateNamed>();
+		functions = new HashMap<String, NamedObject>();
 
 		addFunction("first");
 		addFunction("last");
@@ -65,10 +66,10 @@ public class StLinkingService extends DefaultLinkingService {
 	 *            return type
 	 */
 	private void addFunction(String name) {
-		TemplateNamed template;
-		template = StFactory.eINSTANCE.createTemplateNamed();
-		template.setName(name);
-		functions.put(name, template);
+		NamedObject obj;
+		obj = StFactory.eINSTANCE.createNamedObject();
+		obj.setName(name);
+		functions.put(name, obj);
 	}
 
 	/**
@@ -82,7 +83,7 @@ public class StLinkingService extends DefaultLinkingService {
 	 * @return a list
 	 */
 	private List<EObject> getBuiltinFunction(EObject context, String name) {
-		TemplateNamed function = functions.get(name);
+		NamedObject function = functions.get(name);
 		if (function != null) {
 			// Attach the stub to the resource that's being parsed
 			Resource res = makeResource(context.eResource());
@@ -95,14 +96,14 @@ public class StLinkingService extends DefaultLinkingService {
 	}
 
 	private List<EObject> getImplicitAttribute(EObject context, String s) {
-		// a TemplateNamed may reference attributes from other templates that
+		// a TemplateDef may reference attributes from other templates that
 		// can call it
-		TemplateNamed template = EcoreUtil2.getContainerOfType(context,
-				TemplateNamed.class);
-		Group group = (Group) template.eContainer();
+		TemplateDef template = EcoreUtil2.getContainerOfType(context,
+				TemplateDef.class);
+		Group group = EcoreUtil2.getContainerOfType(template, Group.class);
 		OnChangeEvictingCache.CacheAdapter cache = new OnChangeEvictingCache()
 				.getOrCreate(group);
-		Map<TemplateNamed, Map<String, Attribute>> map = cache
+		Map<TemplateDef, Map<String, Attribute>> map = cache
 				.get("AttributeMap");
 		if (map == null) {
 			map = new ImplicitAttributeSolver().buildAttributeMap(group);
@@ -117,7 +118,7 @@ public class StLinkingService extends DefaultLinkingService {
 			}
 		}
 
-		if (s.equals("i0") || s.equals("i1")) {
+		if (s.equals("i") || s.equals("i0")) {
 			Resource res = makeResource(context.eResource());
 			res.getContents().add(i0);
 			return Collections.singletonList((EObject) i0);
@@ -137,7 +138,7 @@ public class StLinkingService extends DefaultLinkingService {
 		final EClass requiredType = ref.getEReferenceType();
 		final String s = getCrossRefNodeAsString(node);
 		if (requiredType != null && s != null) {
-			if (StPackage.Literals.TEMPLATE_NAMED.isSuperTypeOf(requiredType)) {
+			if (StPackage.Literals.NAMED_OBJECT.isSuperTypeOf(requiredType)) {
 				return getBuiltinFunction(context, s);
 			} else if (StPackage.Literals.ATTRIBUTE.isSuperTypeOf(requiredType)) {
 				return getImplicitAttribute(context, s);

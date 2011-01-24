@@ -4,10 +4,10 @@
 package net.sf.hastee.scoping;
 
 import net.sf.hastee.st.Attribute;
-import net.sf.hastee.st.ExprTemplate;
-import net.sf.hastee.st.TemplateAnonymous;
-import net.sf.hastee.st.TemplateNamed;
+import net.sf.hastee.st.ExprReference;
+import net.sf.hastee.st.TemplateDef;
 
+import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.EReference;
 import org.eclipse.xtext.scoping.IScope;
 import org.eclipse.xtext.scoping.Scopes;
@@ -49,19 +49,20 @@ public class STScopeProvider extends AbstractDeclarativeScopeProvider {
 	 *            a reference
 	 * @return a scope
 	 */
-	public IScope scope_Arg_attribute(ExprTemplate expr, EReference reference) {
-		return getScopeOfArguments(expr.getTemplate().getArguments());
+	public IScope scope_Arg_attribute(ExprReference expr, EReference reference) {
+		EObject body = expr.getObjRef().getBody();
+		if (body instanceof TemplateDef) {
+			TemplateDef template = (TemplateDef) body;
+			return getScopeOfArguments(template.getArguments());
+		} else {
+			return IScope.NULLSCOPE;
+		}
 	}
 
-	public IScope scope_ExprAttribute_attribute(TemplateAnonymous template,
+	public IScope scope_ExprAttribute_attribute(TemplateDef template,
 			EReference reference) {
 		return getScopeOfArguments(template.getArguments(),
 				getScope(template.eContainer(), reference));
-	}
-
-	public IScope scope_ExprAttribute_attribute(TemplateNamed template,
-			EReference reference) {
-		return getScopeOfArguments(template.getArguments());
 	}
 
 }

@@ -6,30 +6,32 @@ generate st "http://www.sf.net/hastee/ST"
 
 // entry point
 Group:
-	(members += GroupMember)*;
+	(members += NamedObject)*;
 
-GroupMember:
-	TemplateNamed | Dictionary;
+NamedObject:
+	name = ID
+	((body=TemplateNamed) | (body=Dictionary));
 
 // top-level elements: TemplateNamed and Dictionary
-TemplateNamed:
-	name = ID '(' (arguments += Attribute (',' arguments += Attribute)*)? ')' '::='
-	(('<<' template = Template '>>')
-	| ('"' template = TemplateString '"'));
+TemplateNamed returns TemplateDef: {TemplateDef}
+	'(' (arguments += Attribute (',' arguments += Attribute)*)? ')' '::='
+	(('<<' (elements += ElementNamed)* '>>')
+	| ('"' (elements += ElementString)* '"'));
 
-Dictionary: name = ID '::=' '[' pairs += DictPair (',' pairs += DictPair)* ']';
+Dictionary: '::=' '[' pairs += DictPair (',' pairs += DictPair)* ']';
 
-DictPair: key = ExprString ':' (('<<' template = Template '>>')
-	| ('"' template = TemplateString '"'));
+DictPair: key = ExprString ':' template = TemplateDef;
 
-Attribute: _name = ID;
+TemplateDef: {TemplateDef}
+	(('<<' (elements += ElementNamed)* '>>')
+	| ('"' (elements += ElementString)* '"'));
 
 Template: {Template} (elements += ElementNamed)*;
 
-TemplateString returns Template: {Template} (elements += ElementString)*;
+Attribute: _name = ID;
 
 // anonymous template
-TemplateAnonymous: {TemplateAnonymous} '{'
+TemplateAnonymous returns TemplateDef: {TemplateDef} '{'
 		(arguments += Attribute (',' arguments += Attribute)* '|')?
 		(elements += ElementAnonymous)*
 	'}';
@@ -96,18 +98,18 @@ ExprMap:
 	( (',' members += ExprMember)* ':' template = MapTemplateRef)?;
 
 MapTemplateRef:
-	ExprTemplate
+	ExprReference
 |	TemplateAnonymous
 |	ExprIndirect;
 
 ExprMember:	root=ExprInclude ('.' properties += Property)*;
 
 ExprInclude:
-	ExprTemplate
+	ExprReference
 	| ExprPrimary;
 
 // call to template
-ExprTemplate: template=[TemplateNamed] '(' args = ExprTemplateArgs? ')';
+ExprReference: objRef=[NamedObject] '(' args = ExprTemplateArgs? ')';
 
 ExprTemplateArgs:
 	NamedArgs
