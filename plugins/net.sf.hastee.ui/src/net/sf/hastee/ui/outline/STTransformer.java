@@ -5,7 +5,7 @@ package net.sf.hastee.ui.outline;
 
 import java.util.List;
 
-import net.sf.hastee.st.NamedTemplate;
+import net.sf.hastee.st.TemplateNamed;
 
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.xtext.ui.editor.outline.transformer.AbstractDeclarativeSemanticModelTransformer;
@@ -16,7 +16,7 @@ import org.eclipse.xtext.ui.editor.outline.transformer.AbstractDeclarativeSemant
  */
 public class STTransformer extends AbstractDeclarativeSemanticModelTransformer {
 
-	public List<EObject> getChildren(NamedTemplate template) {
+	public List<EObject> getChildren(TemplateNamed template) {
 		return NO_CHILDREN;
 	}
 

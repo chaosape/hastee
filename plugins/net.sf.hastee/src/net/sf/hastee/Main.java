@@ -3,8 +3,10 @@ package net.sf.hastee;
 import java.io.File;
 import java.util.List;
 
+import net.sf.hastee.st.Dictionary;
 import net.sf.hastee.st.Group;
-import net.sf.hastee.st.NamedTemplate;
+import net.sf.hastee.st.GroupMember;
+import net.sf.hastee.st.TemplateNamed;
 
 import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.ecore.resource.Resource;
@@ -39,11 +41,15 @@ public class Main {
 			}
 		}
 
-		for (NamedTemplate template : group.getTemplates()) {
-			System.out.print(template.getName() + '(');
-			System.out.println(") ::= <<");
-
-			System.out.println(">>");
+		for (GroupMember member : group.getMembers()) {
+			if (member instanceof TemplateNamed) {
+				System.out.print(member.getName() + '(');
+				System.out.println(") ::= <<");
+				System.out.println(">>");
+			} else if (member instanceof Dictionary) {
+				System.out.print(member.getName() + '[');
+				System.out.println("]");
+			}
 		}
 	}
 

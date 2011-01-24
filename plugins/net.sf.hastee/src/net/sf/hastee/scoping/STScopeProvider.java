@@ -5,8 +5,8 @@ package net.sf.hastee.scoping;
 
 import net.sf.hastee.st.Attribute;
 import net.sf.hastee.st.ExprTemplate;
-import net.sf.hastee.st.NamedTemplate;
-import net.sf.hastee.st.SubTemplate;
+import net.sf.hastee.st.TemplateAnonymous;
+import net.sf.hastee.st.TemplateNamed;
 
 import org.eclipse.emf.ecore.EReference;
 import org.eclipse.xtext.scoping.IScope;
@@ -53,15 +53,15 @@ public class STScopeProvider extends AbstractDeclarativeScopeProvider {
 		return getScopeOfArguments(expr.getTemplate().getArguments());
 	}
 
-	public IScope scope_ExprAttribute_attribute(NamedTemplate template,
-			EReference reference) {
-		return getScopeOfArguments(template.getArguments());
-	}
-
-	public IScope scope_ExprAttribute_attribute(SubTemplate template,
+	public IScope scope_ExprAttribute_attribute(TemplateAnonymous template,
 			EReference reference) {
 		return getScopeOfArguments(template.getArguments(),
 				getScope(template.eContainer(), reference));
+	}
+
+	public IScope scope_ExprAttribute_attribute(TemplateNamed template,
+			EReference reference) {
+		return getScopeOfArguments(template.getArguments());
 	}
 
 }
