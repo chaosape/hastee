@@ -5,26 +5,32 @@ package net.sf.hastee.ui;
 
 import net.sf.hastee.ui.editor.STAntlrTokenToAttributeIdMapper;
 import net.sf.hastee.ui.editor.STHighlightingConfiguration;
+import net.sf.hastee.ui.editor.STSemanticHighlightingCalculator;
 
 import org.eclipse.ui.plugin.AbstractUIPlugin;
 import org.eclipse.xtext.ui.editor.syntaxcoloring.IHighlightingConfiguration;
+import org.eclipse.xtext.ui.editor.syntaxcoloring.ISemanticHighlightingCalculator;
 import org.eclipse.xtext.ui.editor.syntaxcoloring.antlr.AbstractAntlrTokenToAttributeIdMapper;
 
 /**
  * Use this class to register components to be used within the IDE.
  */
 public class STUiModule extends net.sf.hastee.ui.AbstractSTUiModule {
+
 	public STUiModule(AbstractUIPlugin plugin) {
 		super(plugin);
 	}
-	
+
+	public Class<? extends AbstractAntlrTokenToAttributeIdMapper> bindAbstractAntlrTokenToAttributeIdMapper() {
+		return STAntlrTokenToAttributeIdMapper.class;
+	}
+
 	public Class<? extends IHighlightingConfiguration> bindILexicalHighlightingConfiguration() {
 		return STHighlightingConfiguration.class;
 	}
 
-	public Class<? extends AbstractAntlrTokenToAttributeIdMapper> bindAbstractAntlrTokenToAttributeIdMapper() {
-		return STAntlrTokenToAttributeIdMapper.class ;
+	public Class<? extends ISemanticHighlightingCalculator> bindISemanticHighlightingCalculator() {
+		return STSemanticHighlightingCalculator.class;
 	}
+
 }
-
-

@@ -6,46 +6,35 @@ import org.eclipse.xtext.ui.editor.syntaxcoloring.DefaultHighlightingConfigurati
 import org.eclipse.xtext.ui.editor.syntaxcoloring.IHighlightingConfigurationAcceptor;
 import org.eclipse.xtext.ui.editor.utils.TextStyle;
 
+/**
+ * This class defines the highlighting configuration for the ST editor.
+ * 
+ * @author Herve Yviquel
+ * 
+ */
 public class STHighlightingConfiguration extends
 		DefaultHighlightingConfiguration {
 
-	public static final String RULENAME_ID = "rulename";
-	public static final String RULEOPENING_ID = "ruleopening";
-	public static final String RULECLOSING_ID = "ruleclosing";
-	public static final String RULEEQUAL_ID = "ruleequal";
+	public static final String TEMPLATE_NAME = "net.sf.hastee.ui.templateName";
+
+	public static final String SEPARATORS = "net.sf.hastee.ui.separators";
 
 	@Override
 	public void configure(IHighlightingConfigurationAcceptor acceptor) {
 		super.configure(acceptor);
-		acceptor.acceptDefaultHighlighting(RULENAME_ID, "RuleName",
-				ruleNameTextStyle());
-		acceptor.acceptDefaultHighlighting(RULEOPENING_ID, "RuleOpening",
-				ruleOpeningTextStyle());
-		acceptor.acceptDefaultHighlighting(RULECLOSING_ID, "RuleClosing",
-				ruleClosingTextStyle());
-		acceptor.acceptDefaultHighlighting(RULEEQUAL_ID, "RuleEqual",
-				ruleEqualTextStyle());
+		acceptor.acceptDefaultHighlighting(TEMPLATE_NAME, "Template name",
+				templateNameTextStyle());
+		acceptor.acceptDefaultHighlighting(SEPARATORS, "Template separators",
+				separatorsTextStyle());
 	}
 
-	public TextStyle ruleNameTextStyle() {
+	public TextStyle templateNameTextStyle() {
 		TextStyle textStyle = new TextStyle();
 		textStyle.setStyle(SWT.BOLD);
 		return textStyle;
 	}
 
-	public TextStyle ruleOpeningTextStyle() {
-		TextStyle textStyle = new TextStyle();
-		textStyle.setColor(new RGB(0, 0, 255));
-		return textStyle;
-	}
-
-	public TextStyle ruleClosingTextStyle() {
-		TextStyle textStyle = new TextStyle();
-		textStyle.setColor(new RGB(0, 0, 255));
-		return textStyle;
-	}
-
-	public TextStyle ruleEqualTextStyle() {
+	public TextStyle separatorsTextStyle() {
 		TextStyle textStyle = new TextStyle();
 		textStyle.setColor(new RGB(0, 0, 255));
 		return textStyle;
