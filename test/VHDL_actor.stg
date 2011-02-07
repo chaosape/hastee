@@ -36,7 +36,6 @@ endif>
 ///////////////////////////////////////////////////////////////////////////////
 // Print signal and constant
 ///////////////////////////////////////////////////////////////////////////////
-
 // the dimensions of a list: [dim1][dim2]...[dimn]
 // does not output anything if <value> is empty
 listSize(values) ::= <<
@@ -45,32 +44,31 @@ listSize(values) ::= <<
 
 // These signals are used by the IOs management processes
 IOsManagementSignals(port)::= <<
-signal <port.name>_rdy   : std_logic;
-signal <port.name>_isend : std_logic;
-signal <portType(port=port, IOtype="", dataType="idata")>
+signal <port.name>_rdy    : std_logic;
+signal <port.name>_isend  : std_logic;
+signal <portType(port=port, IOtype=" ", dataType="idata")>
 >>
 
 signalDeclaration(variable) ::= <<
 <if(variable.port)
->
-signal <variable> : <variable.type>;<
-else
+>signal <variable> : <variable.type>;
+<else
 ><if(!variable.type.list)
   ><if(!variable.assignable)
-    >constant <variable> : <variable.type> := <variable.initialValue>;<
-    else
-    >signal <variable> : <variable.type>;<
-    endif><
+    >constant <variable> : <variable.type> := <variable.initialValue>;
+    <else
+    >signal <variable> : <variable.type>;
+    <endif><
   else
   ><if(!variable.assignable)
     ><if(variable.initialized)
       >type memory_type_<variable> is array (0 to <listSize(variable.type.dimensions)> -1) of <variable.type>;
-constant <variable> : memory_type_<variable> := <variable.initialValue>;<
-      endif><
+constant <variable> : memory_type_<variable> := <variable.initialValue>;
+      <endif><
     else
     >type memory_type_<variable> is array (0 to <listSize(variable.type.dimensions)> -1) of <variable.type>;
-signal <variable> : memory_type_<variable>;<
-    endif><
+signal <variable> : memory_type_<variable>;
+   <endif><
   endif><
 endif>
 >>
@@ -80,7 +78,7 @@ endif>
 ///////////////////////////////////////////////////////////////////////////////
 // Print variables
 ///////////////////////////////////////////////////////////////////////////////
-variableDeclaration(variable) ::= <<
+VarDeclaration(variable) ::= <<
 <if(variable.type.list)
 >-- error !!!!! variable <variable> : <variable.type> (0 to <listSize(variable.type.dimensions)> -1)<
 else
@@ -341,15 +339,15 @@ end loop;
 ///////////////////////////////////////////////////////////////////////////////
 // Prints functions
 ///////////////////////////////////////////////////////////////////////////////
-function(procedure, transformReturn) ::= <<
-<if (!procedure.external)
+function(procedure) ::= <<
+<if (!procedure.native)
   ><if (procedure.returnType.void)
 >procedure <procedure>(<parameters(procedure.parameters.list)>dummy : std_logic) is<
   else
->function <procedure>(<VarUsed(procedure)><parameters(procedure)>dummy : std_logic) <returnFunction(procedure.returnType) > is<
+>function <procedure>(<VarUsed(procedure)><parameters(procedure)>dummy : std_logic) <returnFunction(procedure.returnType)> is<
   endif>
   <if(procedure.locals.list)
-><procedure.locals.list: <VarInFctDeclaration(); separator=";\n">;<
+><procedure.locals.list: {variable| <VarInFctDeclaration(variable)>;<\n>}><
   endif>
 begin
   <printNodes(procedure.nodes)>
@@ -377,11 +375,11 @@ endif
 
 VarInFctDeclaration(variable) ::= <<
 <if(variable.port)
->  variable <variable> : <typeFunction(variable.type)><
+>variable <variable> : <typeFunction(variable.type)><
 elseif(!variable.type.list)
->  variable <variable> : <typeFunction(variable.type)><
+>variable <variable> : <typeFunction(variable.type)><
 else
->  -- error !!!!! type memory_type<
+>-- error !!!!! type memory_type<
 endif>
 >>
 
@@ -415,8 +413,8 @@ procedure(procedure, transformReturn) ::= <<
 
 printLocals(procedure) ::= <<
 <if(procedure.locals.list)
-><procedure.locals.list: <variableDeclaration(); separator=";\n">;
-<endif>
+><procedure.locals.list: {variable| <VarDeclaration(variable)>;<\n>}><
+endif>
 >>
 
 printActionLocalSchedul(action) ::= <<
@@ -456,32 +454,39 @@ end process out_management;
 FSM_outputs(port) ::= <<
 case <port.name>FSM_out is
   when waitSend =\>
-    if <port.name>_isend = '1' then
+      <port.name>_rdy    \<= '1';
+      <port.name>_send   \<= <port.name>_isend;
+    if (<port.name>_isend = '1') then
+      <port.name>_data   \<= <port.name>_idata;
+      <port.name>FSM_out \<= checkAck;
+    end if;
+  --
+  when checkAck =\>
+    if ((<port.name>_ack and <port.name>_isend) = '1') then
       <port.name>_rdy    \<= '1';
       <port.name>_send   \<= '1';
-      <port.name>_data   \<= <port.name>_idata;
-      <port.name>FSM_out \<= waitAck;
-    else
+      <port.name>_data   \<= <port.name>_idata;  
+    elsif (<port.name>_ack = '1') then
       <port.name>_rdy    \<= '1';
       <port.name>_send   \<= '0';
       <port.name>FSM_out \<= waitSend;
+    elsif (<port.name>_isend = '1') then
+      <port.name>_rdy    \<= '0';
+      <port.name>_send   \<= '1';
+      <port.name>FSM_out \<= waitAck;
+    else
+      <port.name>_rdy    \<= '1';
+      <port.name>_send   \<= '1';
     end if;
   --
   when waitAck =\>
-    if <port.name>_ack = '1' and <port.name>_isend = '1' then
+    <port.name>_send   \<= '1';  
+    if (<port.name>_ack = '1') then
       <port.name>_rdy    \<= '1';
-      <port.name>_send   \<= '1';
-      <port.name>_data   \<= <port.name>_idata;            
-      <port.name>FSM_out \<= waitAck;
-    elsif <port.name>_ack = '1' then
-      <port.name>_rdy    \<= '1';
-      <port.name>_send   \<= '0';
-      <port.name>FSM_out \<= waitSend;
+      <port.name>_data   \<= <port.name>_idata;  
+      <port.name>FSM_out \<= checkAck;
     else
       <port.name>_rdy    \<= '0';
-      <port.name>_send   \<= '1';
-      <port.name>_data   \<= <port.name>_idata;            
-      <port.name>FSM_out \<= waitAck;
     end if;
   --
   when others =\> null;
@@ -496,6 +501,7 @@ else
 endif>
 
 <port.name>_rdy  \<= '0';     
+<port.name>_reg  \<= '0';     
 <port.name>_send \<= '0';
 >>
 
@@ -566,7 +572,11 @@ printActionFire(action) ::= <<
     <action.inputPattern.keys : {port|<port.name>_ack \<= isSchedulable_<action>_go;} ; separator="\n"><
   endif><
 else
+>< if(action.outputPattern.keys)
+>    <action>_go  \<= isSchedulable_<action>_go and <action.outputPattern.keys : {port|<port.name>_rdy}; separator=" and ">;<
+  else
 >    <action>_go  \<= isSchedulable_<action>_go;<
+  endif><
 endif>  
 >>
 
@@ -758,7 +768,7 @@ endif>
   ---------------------------------------------------------------------------
   -- FSM
   ---------------------------------------------------------------------------
-  type FSM_out_type is (waitSend, waitAck);
+  type FSM_out_type is (waitSend, checkAck, waitAck);
   <actor.outputs.list : {port| signal <port.name>FSM_out : FSM_out_type;}; separator="\n">
   <if(actor.actionScheduler.fsm)
   >  --

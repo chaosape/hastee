@@ -64,8 +64,8 @@ const <variableDeclaration(variable)> = <Constant(variable.initialValue)>;<\n><e
 ///////////////////////////////////////////////////////////////////////////////
 StateVarAllocation(variable) ::= <<
 <if(variable.assignable)>
-<if (variable.type.dimensions)>
-<variable>(new <variable.type><listSize(variable.type.dimensions)>),
+<if (variable.type.dimensionsExpr)>
+<variable>(new <variable.type><listSize(variable.type.dimensionsExpr)>),
 <else>
 <if (variable.initialized)>
 <variable>(<Constant(variable.initialValue)>),
@@ -156,7 +156,7 @@ Read(read) ::= <<
 
 <if (read.target)>
 <if(read.unit)>
-m_poTabIn[<actor.simpleName>_<read.port>]-\>get(<read.target>);$\n$
+m_poTabIn[<actor.simpleName>_<read.port>]-\>get(<read.target>);<\n>
 m_arrAvailStatus[<actor.simpleName>_<read.port>] --;
 <else>
 m_poTabIn[<actor.simpleName>_<read.port>]-\>get(<read.target>, <read.numTokens>);<\n>
@@ -449,7 +449,7 @@ ActorAKA("<actor.simpleName>", instanceName, <length(actor.inputs.list)>, <lengt
 destructor(stateVars) ::= <<
 <actor.simpleName>::~<actor.simpleName>()
 {
-	<stateVars: StateVarDestruction()>
+	<stateVars: StateVarDestruction(); separator="\n">
 }
 
 >>
@@ -464,9 +464,9 @@ actor(actor, options) ::= <<
 #include \<string.h\>
 
 #include "<actor.simpleName>.h"
-
+<if (!actor.packageAsList.empty)>
 using namespace <actor.packageAsList; separator="::">;
-
+<endif>
 #ifdef __TRACE_CAPTURE__
 extern TraceAka g_oTracer;
 #endif

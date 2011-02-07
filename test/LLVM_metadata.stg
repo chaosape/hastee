@@ -33,7 +33,7 @@ decl_MD(actor) ::= <<
 <actor.inputs.list: {port | <port_MD(actor= actor, port=port)>}>
 <actor.outputs.list: {port | <port_MD(actor= actor, port=port)>}>
 <actor.parameters.list: {param | <var_MD(actor=actor, var=param)>}>
-<actor.stateVars.list: {var | <var_MD(actor=actor, var=var)>}>
+<actor.stateVars.list: {var | <statevar_MD(actor=actor, var=var)>}>
 <actor.procs.list: {proc | <proc_MD(actor=actor, proc=proc)>}>
 <actor.initializes: {action | <action_MD(actor=actor, action=action)>}>
 <actor.actions: {action | <action_MD(actor=actor, action=action)>}>
@@ -127,6 +127,10 @@ VarDef_decl_MD(actor, var) ::= <<
 !<actor.templateData.names.(var.name)>
 >>
 
+Initializer_decl_MD(actor, var) ::= <<
+!<actor.templateData.exprs.(var.name)>
+>>
+
 patterns_decl_MD(actor, patterns) ::= <<
 !<actor.templateData.patterns.(patterns)>
 >>
@@ -164,7 +168,7 @@ if(actor.actionScheduler.fsm)> metadata <FSM_decl_MD(actor)> <else> null <endif>
 >>
 
 actions_MD(actor) ::= <<
-<actions_decl_MD(actor)> = metadata !{<actor.actionScheduler.actions: {metadata $action_decl_MD(actor=actor, action=it)$}; separator=", ">}
+<actions_decl_MD(actor)> = metadata !{<actor.actionScheduler.actions: {action | metadata <action_decl_MD(actor=actor, action=action)>}; separator=", ">}
 >>
 
 patterns_MD(actor, patterns) ::= <<
@@ -216,6 +220,22 @@ var_MD(actor, var) ::= <<
 <var_decl_MD(actor=actor, var=var)> = metadata !{metadata <VarDef_decl_MD(actor=actor, var=var)>, metadata <Type_decl_MD(actor=actor, var=var)>, <var.type>* @<var>}
 <VarDef_MD(actor=actor, var=var)>
 <Type_MD(actor=actor, var=var)>
+>>
+
+
+statevar_MD(actor, var) ::= <<
+<var_decl_MD(actor=actor, var=var)> = metadata !{metadata <VarDef_decl_MD(actor=actor, var=var)>, metadata <Type_decl_MD(actor=actor, var=var)>, <if(var.Initialized)
+	> metadata <Initializer_decl_MD(actor = actor, var = var)> <else> null <endif>,	<var.type>* @<var>}
+<VarDef_MD(actor=actor, var=var)>
+<Type_MD(actor=actor, var=var)>
+<if(var.Initialized)>
+<Initializer_MD(actor= actor, var=var)>
+<endif>
+>>
+
+Initializer_MD(actor, var) ::= <<
+<Initializer_decl_MD(actor = actor, var = var)> = metadata !{<var.type> <ConstantValue(type=var.type, const=var.initialValue)>}
+
 >>
 
 FSM_MD(actor) ::= <<
@@ -327,16 +347,16 @@ i32 <if(var.index)><var.index><else>0<endif>
 >>
 
 procExtern_MD(proc) ::= <<
-<if(proc.external)>i1 1<else>i1 0<endif>
+<if(proc.native)>i1 1<else>i1 0<endif>
 >>
 
 procRetType_MD(proc) ::= <<
-metadata !"$proc.returnType$"
+metadata !"<proc.returnType>"
 >>
 
 
 varSize_MD(type) ::= <<
-<if(type.list)> <type.dimensions: {dim | i32 $dim$}; separator=", "> <
+<if(type.list)> <type.dimensions: {dim | i32 <dim>}; separator=", "> <
 else> null <endif>
 >>
 

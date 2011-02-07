@@ -1,7 +1,7 @@
 ///////////////////////////////////////////////////////////////////////////////
 // include Actors
 includeActor(actor) ::= <<
-#include "<actor.packageAsList; separator="/">/<actor.simpleName>.h"
+#include "<if (!actor.packageAsList.empty)><actor.packageAsList; separator="/">/<endif><actor.simpleName>.h"
 >>
 
 includeActors(actors) ::= <<
@@ -86,11 +86,11 @@ assignFifos(edges) ::= <<
 // declare Instances
 
 declareInstance(instance) ::= <<
-<if(instance.serdes)>
-WrapperAka <instance.id>("<instance.id>");
-<else>
-<instance.actor.packageAsList; separator="::">::<instance.actor.simpleName> <instance.id><initializeInstance(instance)>;
-<endif>
+<if(instance.serdes)
+>WrapperAka <instance.id>("<instance.id>");<
+else
+><instance.actor.packageAsList; separator="::">::<instance.actor.simpleName> <instance.id><initializeInstance(instance)>;<
+endif>
 >>
 
 declareInstances(instances) ::= <<
@@ -249,44 +249,18 @@ TraceAka g_oTracer;
 
 <includeActors(network.actors)>
 
-#define SIZE 10000
+#define SIZE 1024
 
 <declareInstances(network.instances)>
 
 <declareFifos(network.connections)>
 
-<if (options.needThreads)>
-
 <declareThreads(options.threads)>
-
-<else>
-<declareNetwork(id=network.name, instances=network.instances)>
-
-<endif>
 
 int main(int argc, char *argv[]) {
 	init_orcc(argc, argv, NULL);
-<if (options.needThreads)>
+
 	<printThreads(options.threads)>
-<else>
-
-	// create threads
-	<defineNetwork(network.name)>
-
-	<assignFifos(network.connections)>
-
-<if (options.needSerDes)>
-	// start wrappers
-	<startWrappers(network.instances)>
-<endif>
-	
-
-	// start threads
-	<startNetwork(network.name)>
-
-	// join threads
-	<stopNetwork(network.name)>
-<endif>
 
 	return 0;
 }
