@@ -35,7 +35,7 @@ public class STScopeProvider extends AbstractDeclarativeScopeProvider {
 					public String apply(Attribute attribute) {
 						return attribute.get_name();
 					}
-				}, IScope.NULLSCOPE);
+				}, outer);
 		return scope;
 	}
 
