@@ -5,9 +5,11 @@ package net.sf.hastee;
 
 import net.sf.hastee.linking.StLinkingService;
 import net.sf.hastee.naming.STNameProvider;
+import net.sf.hastee.scoping.STImportUriResolver;
 
 import org.eclipse.xtext.linking.ILinkingService;
 import org.eclipse.xtext.naming.IQualifiedNameProvider;
+import org.eclipse.xtext.scoping.impl.ImportUriResolver;
 
 /**
  * Use this class to register components to be used at runtime / without the
@@ -18,6 +20,10 @@ public class STRuntimeModule extends net.sf.hastee.AbstractSTRuntimeModule {
 	@Override
 	public Class<? extends IQualifiedNameProvider> bindIQualifiedNameProvider() {
 		return STNameProvider.class;
+	}
+
+	public Class<? extends ImportUriResolver> bindImportUriResolver() {
+		return STImportUriResolver.class;
 	}
 	
 	@Override

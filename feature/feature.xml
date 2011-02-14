@@ -2,7 +2,7 @@
 <feature
       id="net.sf.hastee.feature"
       label="Hastee StringTemplate Eclipse Editor"
-      version="0.1.2.v201102071456">
+      version="0.1.3.v201102141559">
 
    <description url="http://www.example.com/description">
       [Enter Feature Description here.]
@@ -20,7 +20,7 @@
          id="net.sf.hastee"
          download-size="0"
          install-size="0"
-         version="0.1.2.v201102071456"
+         version="0.1.3.v201102141559"
          unpack="false"/>
 
    <plugin

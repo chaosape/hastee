@@ -6,7 +6,10 @@ generate st "http://www.sf.net/hastee/ST"
 
 // entry point
 Group:
+	(imports += Import)*
 	(members += NamedObject)*;
+
+Import: 'import' uri=ExprString;
 
 NamedObject:
 	name = ID
@@ -151,6 +154,8 @@ Token:
 | ','
 | '.'
 | ':'
+| '::'
+| '::='
 | ';'
 | '\\<'
 | '='
@@ -160,14 +165,14 @@ Token:
 | ']'
 | '{'
 
-| 'elseif'
-| 'else'
 | '||'
 | '&&'
-| 'if'
+
+| 'else'
+| 'elseif'
 | 'endif'
-| '::='
-| '::'
+| 'if'
+| 'import'
 
 | ID
 | ESCAPE_TOKEN
