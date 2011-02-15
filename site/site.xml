@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <site>
-   <feature url="features/net.sf.hastee.feature_0.1.3.v201102141559.jar" id="net.sf.hastee.feature" version="0.1.3.v201102141559">
+   <feature url="features/net.sf.hastee.feature_0.1.3.v201102151419.jar" id="net.sf.hastee.feature" version="0.1.3.v201102151419">
       <category name="Hastee"/>
    </feature>
    <category-def name="Hastee" label="Hastee"/>
