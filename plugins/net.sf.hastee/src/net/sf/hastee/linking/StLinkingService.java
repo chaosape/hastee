@@ -34,7 +34,6 @@ public class StLinkingService extends DefaultLinkingService {
 	private Map<String, NamedObject> functions;
 
 	private Attribute i0;
-	private Attribute trueOrFalse;
 
 	private Resource stubsResource = null;
 
@@ -53,9 +52,7 @@ public class StLinkingService extends DefaultLinkingService {
 
 		i0 = StFactory.eINSTANCE.createAttribute();
 		i0.set_name("i0");
-		
-		trueOrFalse = StFactory.eINSTANCE.createAttribute();
-		trueOrFalse.set_name("trueOrFalse");		
+
 	}
 
 	/**
@@ -126,12 +123,6 @@ public class StLinkingService extends DefaultLinkingService {
 			Resource res = makeResource(context.eResource());
 			res.getContents().add(i0);
 			return Collections.singletonList((EObject) i0);
-		}
-		
-		if (s.equals("true") || s.equals("false")) {
-			Resource res = makeResource(context.eResource());
-			res.getContents().add(trueOrFalse);
-			return Collections.singletonList((EObject) trueOrFalse);
 		}
 
 		return Collections.emptyList();

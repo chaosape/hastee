@@ -53,7 +53,7 @@ public class STScopeProvider extends AbstractDeclarativeScopeProvider {
 		EObject body = expr.getObjRef().getBody();
 		if (body instanceof TemplateDef) {
 			TemplateDef template = (TemplateDef) body;
-			return getScopeOfArguments(template.getArguments());
+			return getScopeOfArguments(template.getArguments().getArguments());
 		} else {
 			return IScope.NULLSCOPE;
 		}
@@ -61,7 +61,7 @@ public class STScopeProvider extends AbstractDeclarativeScopeProvider {
 
 	public IScope scope_ExprAttribute_attribute(TemplateDef template,
 			EReference reference) {
-		return getScopeOfArguments(template.getArguments(),
+		return getScopeOfArguments(template.getArguments().getArguments(),
 				getScope(template.eContainer(), reference));
 	}
 

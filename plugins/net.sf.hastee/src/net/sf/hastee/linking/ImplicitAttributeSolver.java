@@ -50,7 +50,7 @@ public class ImplicitAttributeSolver {
 	private void visitTemplate(Set<TemplateDef> visitedSet,
 			Map<String, Attribute> attributes, TemplateDef template) {
 		visitedSet.add(template);
-		for (Attribute attribute : template.getArguments()) {
+		for (Attribute attribute : template.getArguments().getArguments()) {
 			attributes.put(attribute.get_name(), attribute);
 		}
 		attrMap.put(template, attributes);
