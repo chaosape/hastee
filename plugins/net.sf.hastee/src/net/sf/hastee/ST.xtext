@@ -18,7 +18,9 @@ NamedObject:
 	// top-level elements: TemplateNamed and Dictionary
 TemplateNamed returns TemplateDef:
 	{TemplateDef}
-	'(' (arguments=Attributes)? ')' '::='
+	'(' ( (arguments += Attribute (',' arguments+=Attribute)* (',' arguments+=AttributeWithDefaultValue)*)
+		| (arguments += AttributeWithDefaultValue (',' arguments+=AttributeWithDefaultValue)*))?
+	')' '::='
 	(('<<' (elements+=ElementNamed)* '>>')
 	| ('"' (elements+=ElementString)* '"'));
 
@@ -36,13 +38,6 @@ TemplateDef:
 Template:
 	{Template} (elements+=ElementNamed)*;
 
-Attributes:
-	arguments+=Attribute (',' arguments+=Attribute)* (',' arguments+=AttributeWithDefaultValue)*
-	| arguments+=AttributeWithDefaultValue (',' arguments+=AttributeWithDefaultValue)*;
-
-AttributesAnonymous returns Attributes:
-	arguments+=Attribute (',' arguments+=Attribute)* '|';
-
 Attribute:
 	_name=ID;
 
@@ -57,8 +52,8 @@ DefaultValue:
 	// anonymous template
 TemplateAnonymous returns TemplateDef:
 	{TemplateDef} '{'
-	(arguments=AttributesAnonymous)?
-	(elements+=ElementAnonymous)*
+	(arguments += Attribute (',' arguments+=Attribute)* '|')?
+	(elements += ElementAnonymous)*
 	'}';
 
 	// elements allowed in named, string, and anonymous templates
