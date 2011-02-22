@@ -61,19 +61,19 @@ ElementNamed returns Element:
 	ElementCommon | ElementTokenNamed;
 
 ElementTokenNamed returns ElementToken:
-	token=Token | token='|' | token='}' | token='"';
+	token=Token | token='|' | token='}' | token='\\}' | token='"';
 
 ElementString returns Element:
 	ElementCommon | ElementTokenString;
 
 ElementTokenString returns ElementToken:
-	token=Token | token='|' | token='}';
+	token=Token | token='|' | token='}' | token='\\}';
 
 ElementAnonymous returns Element:
 	ElementCommon | ElementTokenAnonymous;
 
 ElementTokenAnonymous returns ElementToken:
-	token=Token | token='"';
+	token=Token | token='\\}' | token='"';
 
 ElementCommon:
 	Test
