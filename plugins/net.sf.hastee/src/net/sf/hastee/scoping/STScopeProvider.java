@@ -9,6 +9,7 @@ import net.sf.hastee.st.TemplateDef;
 
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.EReference;
+import org.eclipse.xtext.naming.QualifiedName;
 import org.eclipse.xtext.scoping.IScope;
 import org.eclipse.xtext.scoping.Scopes;
 import org.eclipse.xtext.scoping.impl.AbstractDeclarativeScopeProvider;
@@ -31,9 +32,9 @@ public class STScopeProvider extends AbstractDeclarativeScopeProvider {
 	private IScope getScopeOfArguments(Iterable<Attribute> elements,
 			IScope outer) {
 		IScope scope = Scopes.scopeFor(elements,
-				new Function<Attribute, String>() {
-					public String apply(Attribute attribute) {
-						return attribute.get_name();
+				new Function<Attribute, QualifiedName>() {
+					public QualifiedName apply(Attribute attribute) {
+						return QualifiedName.create(attribute.get_name());
 					}
 				}, outer);
 		return scope;

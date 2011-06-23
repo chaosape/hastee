@@ -19,7 +19,7 @@ import org.eclipse.emf.ecore.EReference;
 import org.eclipse.emf.ecore.resource.Resource;
 import org.eclipse.xtext.EcoreUtil2;
 import org.eclipse.xtext.linking.impl.DefaultLinkingService;
-import org.eclipse.xtext.parsetree.AbstractNode;
+import org.eclipse.xtext.nodemodel.INode;
 import org.eclipse.xtext.util.OnChangeEvictingCache;
 
 /**
@@ -103,7 +103,7 @@ public class StLinkingService extends DefaultLinkingService {
 				TemplateDef.class);
 		Group group = EcoreUtil2.getContainerOfType(template, Group.class);
 		OnChangeEvictingCache.CacheAdapter cache = new OnChangeEvictingCache()
-				.getOrCreate(group);
+				.getOrCreate(group.eResource());
 		Map<TemplateDef, Map<String, Attribute>> map = cache
 				.get("AttributeMap");
 		if (map == null) {
@@ -130,7 +130,7 @@ public class StLinkingService extends DefaultLinkingService {
 
 	@Override
 	public List<EObject> getLinkedObjects(EObject context, EReference ref,
-			AbstractNode node) {
+			INode node) {
 		List<EObject> result = super.getLinkedObjects(context, ref, node);
 		if (result != null && !result.isEmpty()) {
 			return result;
