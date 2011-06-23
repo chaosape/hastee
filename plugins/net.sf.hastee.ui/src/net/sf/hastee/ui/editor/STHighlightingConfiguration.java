@@ -15,9 +15,9 @@ import org.eclipse.xtext.ui.editor.utils.TextStyle;
 public class STHighlightingConfiguration extends
 		DefaultHighlightingConfiguration {
 
-	public static final String TEMPLATE_NAME = "TemplateName";
-
 	public static final String SEPARATORS = "Separators";
+
+	public static final String TEMPLATE_NAME = "TemplateName";
 
 	@Override
 	public void configure(IHighlightingConfigurationAcceptor acceptor) {
@@ -28,6 +28,12 @@ public class STHighlightingConfiguration extends
 				separatorsTextStyle());
 	}
 
+	public TextStyle separatorsTextStyle() {
+		TextStyle textStyle = new TextStyle();
+		textStyle.setColor(new RGB(0, 0, 255));
+		return textStyle;
+	}
+
 	public TextStyle templateNameTextStyle() {
 		TextStyle textStyle = new TextStyle();
 		textStyle.setStyle(SWT.BOLD);
@@ -35,9 +41,4 @@ public class STHighlightingConfiguration extends
 		return textStyle;
 	}
 
-	public TextStyle separatorsTextStyle() {
-		TextStyle textStyle = new TextStyle();
-		textStyle.setColor(new RGB(0, 0, 255));
-		return textStyle;
-	}
 }

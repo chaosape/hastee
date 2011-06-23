@@ -3,9 +3,9 @@
  */
 package net.sf.hastee.ui.outline;
 
+import net.sf.hastee.st.Group;
 import net.sf.hastee.st.NamedObject;
 
-import org.eclipse.emf.ecore.EObject;
 import org.eclipse.xtext.ui.editor.outline.IOutlineNode;
 import org.eclipse.xtext.ui.editor.outline.impl.DefaultOutlineTreeProvider;
 
@@ -15,10 +15,30 @@ import org.eclipse.xtext.ui.editor.outline.impl.DefaultOutlineTreeProvider;
  */
 public class STOutlineTreeProvider extends DefaultOutlineTreeProvider {
 
-	public void createChildren(IOutlineNode parentNode, EObject modelElement) {
-		if (modelElement instanceof NamedObject) {
-			super.createChildren(parentNode, modelElement);
+	/**
+	 * This method creates nodes for the members of the group, but not for the
+	 * group itself.
+	 * 
+	 * @param parentNode
+	 *            parent outline node
+	 * @param group
+	 *            group
+	 */
+	protected void _createNode(IOutlineNode parentNode, Group group) {
+		for (NamedObject object : group.getMembers()) {
+			createNode(parentNode, object);
 		}
+	}
+
+	/**
+	 * This method identifies a NamedObject as a leaf node, so no children are
+	 * created under it.
+	 * 
+	 * @param namedObject
+	 * @return <code>true</code>
+	 */
+	protected boolean _isLeaf(NamedObject namedObject) {
+		return true;
 	}
 
 }
