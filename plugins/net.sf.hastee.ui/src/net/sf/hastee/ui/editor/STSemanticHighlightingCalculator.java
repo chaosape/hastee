@@ -8,17 +8,17 @@
 package net.sf.hastee.ui.editor;
 
 import java.util.Iterator;
+import java.util.List;
 
 import net.sf.hastee.st.NamedObject;
 
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.util.EcoreUtil;
 import org.eclipse.xtext.XtextPackage;
-import org.eclipse.xtext.parsetree.AbstractNode;
-import org.eclipse.xtext.parsetree.CompositeNode;
-import org.eclipse.xtext.parsetree.LeafNode;
-import org.eclipse.xtext.parsetree.NodeAdapter;
-import org.eclipse.xtext.parsetree.NodeUtil;
+import org.eclipse.xtext.nodemodel.ILeafNode;
+import org.eclipse.xtext.nodemodel.INode;
+import org.eclipse.xtext.nodemodel.impl.LeafNode;
+import org.eclipse.xtext.nodemodel.util.NodeModelUtils;
 import org.eclipse.xtext.resource.XtextResource;
 import org.eclipse.xtext.ui.editor.syntaxcoloring.IHighlightedPositionAcceptor;
 import org.eclipse.xtext.ui.editor.syntaxcoloring.ISemanticHighlightingCalculator;
@@ -33,33 +33,14 @@ import org.eclipse.xtext.ui.editor.syntaxcoloring.ISemanticHighlightingCalculato
 public class STSemanticHighlightingCalculator implements
 		ISemanticHighlightingCalculator {
 
-	public AbstractNode getFirstFeatureNode(EObject semantic, String feature) {
-		NodeAdapter adapter = NodeUtil.getNodeAdapter(semantic);
-		if (adapter != null) {
-			CompositeNode node = adapter.getParserNode();
-			if (node != null) {
-				if (feature == null)
-					return node;
-				for (AbstractNode child : node.getChildren()) {
-					if (child instanceof LeafNode) {
-						if (feature.equals(((LeafNode) child).getFeature())) {
-							return child;
-						}
-					}
-				}
-			}
-		}
-		return null;
-	}
-
-	private void highlightNode(AbstractNode node, String id,
+	private void highlightNode(INode node, String id,
 			IHighlightedPositionAcceptor acceptor) {
 		if (node == null)
 			return;
 		if (node instanceof LeafNode) {
 			acceptor.addPosition(node.getOffset(), node.getLength(), id);
 		} else {
-			for (LeafNode leaf : node.getLeafNodes()) {
+			for (ILeafNode leaf : node.getLeafNodes()) {
 				if (!leaf.isHidden()) {
 					acceptor.addPosition(leaf.getOffset(), leaf.getLength(), id);
 				}
@@ -75,10 +56,12 @@ public class STSemanticHighlightingCalculator implements
 		while (iter.hasNext()) {
 			EObject current = iter.next();
 			if (current instanceof NamedObject) {
-				AbstractNode node = getFirstFeatureNode(current,
-						XtextPackage.Literals.ABSTRACT_RULE__NAME.getName());
-				highlightNode(node, STHighlightingConfiguration.TEMPLATE_NAME,
-						acceptor);
+				List<INode> nodes = NodeModelUtils.findNodesForFeature(current,
+						XtextPackage.Literals.ABSTRACT_RULE__NAME);
+				if (!nodes.isEmpty()) {
+					highlightNode(nodes.get(0),
+							STHighlightingConfiguration.TEMPLATE_NAME, acceptor);
+				}
 			}
 		}
 	}

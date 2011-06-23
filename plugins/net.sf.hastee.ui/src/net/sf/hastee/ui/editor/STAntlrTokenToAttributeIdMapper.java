@@ -1,6 +1,6 @@
 package net.sf.hastee.ui.editor;
 
-import org.eclipse.xtext.ui.editor.syntaxcoloring.antlr.DefaultAntlrTokenToAttributeIdMapper;
+import org.eclipse.xtext.ui.editor.syntaxcoloring.DefaultAntlrTokenToAttributeIdMapper;
 
 /**
  * This class maps tokens to highlighting styles.
