@@ -138,16 +138,16 @@ printPeek(peek) ::= <<
 printRead(read) ::= <<
 
 <if (read.target)
->int <read.port>_Index = fifo_<read.port>.getReadIndex(<read.numTokens>);
-<read.target> = fifo_<read.port>.getReadArray(<read.numTokens>);<
+>int <read.port.name>_Index = fifo_<read.port.name>.getReadIndex(<read.numTokens>);
+<read.target> = fifo_<read.port.name>.getReadArray(<read.numTokens>);<
 else
->fifo_<read.port>.getReadIndex(<read.numTokens>);
-fifo_<read.port>.getReadArray(<read.numTokens>);<endif>
+>fifo_<read.port.name>.getReadIndex(<read.numTokens>);
+fifo_<read.port.name>.getReadArray(<read.numTokens>);<endif>
 >>
 
-printReadEnd(readEnd) ::= <<
+printReadEnd(port, numTokens) ::= <<
 
-fifo_<readEnd.port>.readEnd(<readEnd.numTokens>);
+fifo_<port.name>.readEnd(<numTokens>);
 >>
 
 printStore(store) ::= <<
@@ -161,20 +161,20 @@ else
 // write instruction
 printWrite(write) ::= <<
 
-<write.target> = fifo_<write.port>.getWriteArray(<write.numTokens>);
-int <write.port>_Index = fifo_<write.port>.getWriteIndex(<write.numTokens>);
+<write.target> = fifo_<write.port.name>.getWriteArray(<write.numTokens>);
+int <write.port>_Index = fifo_<write.port.name>.getWriteIndex(<write.numTokens>);
 >>
 
-printWriteEnd(writeEnd) ::= <<
+printWriteEnd(port, numTokens) ::= <<
 
-fifo_<writeEnd.port>.writeEnd(<writeEnd.numTokens>, <writeEnd.target>);
+fifo_<port.name>.writeEnd(<numTokens>, <port.name>);
 >>
 
 ///////////////////////////////////////////////////////////////////////////////
 // Procedure and actions
 ///////////////////////////////////////////////////////////////////////////////
 
-procedure(procedure) ::= <<
+printProcedure(procedure,action="") ::= <<
 <if(!procedure.native)>
 
 private <procedure.returnType> <procedure>(<procedure.parameters.list: {parameter | <variableDeclaration(parameter)>}; wrap, anchor, separator=", ">) {
@@ -185,6 +185,19 @@ private <procedure.returnType> <procedure>(<procedure.parameters.list: {paramete
 }
 
 <endif>
+>>
+
+printAction(action) ::= <<
+private void <action.body.name>() {
+<if(action.body.locals.list)>
+	<action.body.locals.list: {local | <variableDeclarationInit(local)>;<\n>}>
+<endif>
+	<printNodes(action.body.nodes)>
+	<action.inputPattern.keys: { port |<printReadEnd(port=port, numTokens=action.inputPattern.(port))>}>
+	<action.outputPattern.keys: { port |<printWriteEnd(port=port, numTokens=action.outputPattern.(port))>}>
+}
+
+<printProcedure(procedure=action.scheduler, action=action)>
 >>
 
 
@@ -369,12 +382,12 @@ public class Actor_<actor.simpleName> implements IActor {
 	}
 	
 	// Functions/procedures
-	<actor.procs.list: procedure()>
+	<actor.procs.list: printProcedure()>
 	// Actions
-	<actor.actions: action()>
+	<actor.actions: printAction()>
 <if(actor.initializes)>
 	// Initializes
-	<actor.initializes: action()>
+	<actor.initializes: printAction()>
 <endif>
 	@Override
 	public void initialize() {
@@ -405,14 +418,6 @@ public class Actor_<actor.simpleName> implements IActor {
 
 }
 
->>
-
-///////////////////////////////////////////////////////////////////////////////
-// Action
-///////////////////////////////////////////////////////////////////////////////
-
-action(action) ::= <<
-<procedure(action.body)><procedure(action.scheduler)>
 >>
 
 

@@ -2,25 +2,41 @@ GetInstanceId(instance) ::= <<
 <if (instance.broadcast)>bcast_<endif><instance.id>
 >>
 
-BroadcastWrite(n) ::= <<
-tok_output_<n> = fifo_<instance.broadcast.type>_write(<GetInstanceId(instance)>_output_<n>, output_<n>_buf, 1);
-*tok_output_<n> = *tok_input;
+BroadcastWrite(n,port) ::= <<
+fifo<printMedium(port,instance)>_<instance.broadcast.type>_write_1(<GetInstanceId(instance)>_output_<n>, tok_input);
 >>
 
-BroadcastWriteEnd(n) ::= <<
-fifo_<instance.broadcast.type>_write_end(<GetInstanceId(instance)>_output_<n>, output_<n>_buf, 1);
+printBroadcastWrite(OutputNum, OutputPorts) ::= <<
+<if(first(OutputNum))>
+<BroadcastWrite(first(OutputNum),first(OutputPorts))>
+<printBroadcastWrite(rest(OutputNum),rest(OutputPorts))>
+<endif>
 >>
 
-outputPatternPort(num) ::= <<
-if (!fifo_<instance.broadcast.type>_has_room(<GetInstanceId(instance)>_output_<num>, 1)) {
+outputPatternPort(num, port) ::= <<
+if (!fifo<printMedium(port,instance)>_<instance.broadcast.type>_has_room(<GetInstanceId(instance)>_output_<num>, 1, 1)) {
 	ports |= (1 \<\< <num>);
 }
 >>
 
-outputPattern(outputs) ::= <<
+outputPattern(outputsNumPort, outputsPort) ::= <<
+<if(first(outputsNumPort))>
+<outputPatternPort(first(outputsNumPort),first(outputsPort))>
+<outputPattern(rest(outputsNumPort),rest(outputsPort))>
+<endif>
+>>
+
+printOutputPattern(outputsNumPort, outputsPort) ::= <<
+<if(first(outputsNumPort))>
 int ports = 0;
-<outputs: outputPatternPort(); separator="\n">
+<outputPattern(outputsNumPort, outputsPort)>
 if (ports != 0) {
+	si-\>num_firings = i;
+	si-\>reason = full;
+	si-\>ports = ports;
+	return;
+}
+<endif>
 >>
 
 declareBroadcast(instance) ::= <<
@@ -28,21 +44,13 @@ declareBroadcast(instance) ::= <<
 >
 void <GetInstanceId(instance)>_scheduler(struct schedinfo_s *si) {
 	int i = 0;
-	<instance.broadcast.type> *tok_input, input_buf[1],
-	<instance.broadcast.outputList: { n | output_<n>_buf[1], *tok_output_<n>}; separator=",\n">;
+	<instance.broadcast.type> tok_input;
 
-	while (fifo_<instance.broadcast.type>_has_tokens(<GetInstanceId(instance)>_input, 1)) {
-		<outputPattern(instance.broadcast.outputList)>
-			si-\>num_firings = i;
-			si-\>reason = full;
-			si-\>ports = ports;
-			return;
-		}
+	while (fifo<printMedium(instance.broadcast.input,instance)>_<instance.broadcast.type>_has_tokens(<GetInstanceId(instance)>_input, 0, 1)) {
+		<printOutputPattern(instance.broadcast.outputList,instance.broadcast.outputs.list)>
 
-		tok_input = fifo_<instance.broadcast.type>_read(<GetInstanceId(instance)>_input, input_buf, 1);
-		<instance.broadcast.outputList: BroadcastWrite(); separator="\n">
-		fifo_<instance.broadcast.type>_read_end(<GetInstanceId(instance)>_input, 1);
-		<instance.broadcast.outputList: BroadcastWriteEnd(); separator="\n">
+		tok_input = fifo<printMedium(instance.broadcast.input,instance)>_<instance.broadcast.type>_read_1(<GetInstanceId(instance)>_input, 0);
+		<printBroadcastWrite(instance.broadcast.outputList,instance.broadcast.outputs.list)>
 		i++;
 	}
 
@@ -61,54 +69,73 @@ declareBroadcasts(instances) ::= <<
 ///////////////////////////////////////////////////////////////////////////////
 // Declare predecessors and successors
 
-Neighbor(port) ::= <<
-&<GetInstanceId(map.(port))>
->>
-
-Neighbors(map, ports) ::= <<
-<ports: Neighbor(); separator=", ">
->>
-
-goDeclarePredSucc(inputs, outputs) ::= <<
-<if(!inputs.empty)
->struct actor_s *<GetInstanceId(instance)>_predecessors[] = {<Neighbors(map=network.predecessorsMap.(instance), ports=inputs)>};
-<endif><
-if(!outputs.empty)
->struct actor_s *<GetInstanceId(instance)>_successors[] = {<Neighbors(map=network.successorsMap.(instance), ports=outputs)>};
-<endif>
->>
-
-goDeclarePredsSuccs(instance, incoming, outgoing) ::= <<
-<if (instance.actor)
-><goDeclarePredSucc(inputs=instance.actor.inputs.list,
-                    outputs=instance.actor.outputs.list)><
-elseif (instance.broadcast)
-><goDeclarePredSucc(inputs=instance.broadcast.inputs.list,
-                   outputs=instance.broadcast.outputs.list)><
+neighbour(instance) ::= <<
+<if(instance.actor || instance.broadcast)
+  >&<GetInstanceId(instance)
+><else
+  >NULL<
 endif>
 >>
 
+predecessors(map, ports) ::= <<
+<ports: {port | <neighbour(map.(port))>}; separator=", ">
+>>
+
+successors(instances) ::= <<
+<instances: neighbour(); separator=", ">
+>>
+
+goDeclareNumSuccessors(map,outputs) ::= <<
+<outputs : {port | <length(map.(port))>}; separator=", ">
+>>
+
+goDeclareSuccPerPort(port) ::= <<
+struct actor_s *<GetInstanceId(instance)>_<port.name>_successors[] = {<successors(map.(port))>};
+>>
+
+goDeclareSuccs(map,outputs) ::= <<
+<outputs : goDeclareSuccPerPort(); separator="\n">
+int <GetInstanceId(instance)>_num_successors[] = {<goDeclareNumSuccessors(map,outputs)>};
+>>
+
+goDeclarePredSucc(network, inputs, outputs) ::= <<
+<if(!inputs.empty)
+>struct actor_s *<GetInstanceId(instance)>_predecessors[] = {<predecessors(map=network.predecessorsMap.(instance), ports=inputs)>};
+<endif><
+if(!outputs.empty)
+><goDeclareSuccs(network.successorsMap.(instance), outputs)>
+struct actor_s **<GetInstanceId(instance)>_successors[] = {<outputs: {port | <GetInstanceId(instance)>_<port.name>_successors}; separator=", ">};
+<endif>
+>>
+
+goDeclarePredsSuccs(instance) ::= <<
+<if (instance.actor)><goDeclarePredSucc(
+					inputs=instance.actor.inputs,
+                    outputs=instance.actor.outputs)>
+<elseif (instance.broadcast)><goDeclarePredSucc(
+					inputs=instance.broadcast.inputs.list,
+					outputs=instance.broadcast.outputs.list)>
+<endif>
+>>
+
 declarePredsSuccs(instances) ::= <<
-<instances:
-  {inst | <goDeclarePredsSuccs(instance=inst,
-    incoming=network.incomingMap.(inst),
-    outgoing=network.outgoingMap.(inst))>}>
+<instances: {inst | <goDeclarePredsSuccs(instance=inst)>}>
 >>
 
 
 ///////////////////////////////////////////////////////////////////////////////
 // allocates FIFOs
 
-allocateFifoType(type, size, count) ::= <<
-DECLARE_FIFO(<type>, <if(size)><size><else>SIZE<endif>, <count>)
+allocateFifoType(type, size, count, port, instance) ::= <<
+DECLARE_FIFO<printUpperCaseMedium(port,instance)>(<type>, <if(size)><size><else>SIZE<endif>, <count>, <readers_nb>)
 >>
 
 doAllocateFifo(edge, source, sourcePort, target, targetPort) ::= <<
-<if (source.broadcast)>
+<if (source.broadcast || source.actor)>
 <allocateFifoType(
-  type=targetPort.type, size=edge.size, count=network.connectionMap.(edge))><else>
+  sourcePort.type, edge.size, network.connectionMapWithoutBroadcast.(edge), sourcePort, source)><else>
 <allocateFifoType(
-  type=sourcePort.type, size=edge.size, count=network.connectionMap.(edge))><endif>
+  targetPort.type, edge.size, network.connectionMapWithoutBroadcast.(edge), targetPort, target)><endif>
 >>
 
 tryAllocateFifo(edge, src, tgt) ::= <<
@@ -119,52 +146,129 @@ tryAllocateFifo(edge, src, tgt) ::= <<
   target=tgt.instance, targetPort=edge.target)><endif>
 >>
 
-allocateFifo(edge) ::= <<
+allocateFifo(edge, readers_nb) ::= <<
 <tryAllocateFifo(edge=edge, src=network.sourceMap.(edge), tgt=network.targetMap.(edge))>
 >>
 
-allocateFifos(edges) ::= <<
-<edges: allocateFifo()>
+allocateFifosWithMap(outgoingMap) ::= <<
+<outgoingMap.keys: { instance | <outgoingMap.(instance).keys: { port | <allocateFifo(first(outgoingMap.(instance).(port)), length(outgoingMap.(instance).(port)))> }> }>
 >>
 
 
 ///////////////////////////////////////////////////////////////////////////////
 // assigns FIFOs
 
-doAssignFifo(source, sourcePort, target, targetPort, count) ::= <<
-struct fifo_<sourcePort.type>_s *<GetInstanceId(source)>_<sourcePort.name> = &fifo_<count>;
-struct fifo_<sourcePort.type>_s *<GetInstanceId(target)>_<targetPort.name> = &fifo_<count>;
+doAssignFifo(instance, port, count) ::= <<
+<if(instance.actor || instance.broadcast)>struct fifo<printMedium(port,instance)>_<port.type>_s *<GetInstanceId(instance)>_<port.name> = &fifo_<count>;<endif>
 >>
 
-tryAssignFifo(edge, src, tgt) ::= <<
+tryAssignFifoTgt(edge, src, tgt) ::= <<
 <if (src.instance && tgt.instance)>
 <doAssignFifo(
+  tgt.instance, edge.target,
+  network.connectionMapWithoutBroadcast.(edge))><endif>
+>>
+
+tryAssignFifoSrc(edge, src, tgt) ::= <<
+<if (src.instance && tgt.instance)>
+<doAssignFifo(
+  src.instance, edge.source,
+  network.connectionMapWithoutBroadcast.(edge))><endif>
+>>
+
+assignFifos(edges, readers_nb) ::= <<
+
+<tryAssignFifoSrc(first(edges), network.sourceMap.(first(edges)), network.targetMap.(first(edges)))>
+<edges: {edge | <tryAssignFifoTgt(edge, network.sourceMap.(edge), network.targetMap.(edge))> }>
+
+>>
+
+assignFifosWithMap(outgoingMap) ::= <<
+<outgoingMap.keys: { instance | <outgoingMap.(instance).keys: { port | <assignFifos(outgoingMap.(instance).(port), length(outgoingMap.(instance).(port)))> }> }>
+>>
+
+///////////////////////////////////////////////////////////////////////////////
+// clear FIFOs
+
+clearFifoType(type, size, count, port, instance) ::= <<
+fifo_<type>_clear(&fifo_<count>);
+>>
+
+doClearFifo(edge, source, sourcePort, target, targetPort) ::= <<
+<if (source.broadcast || source.actor)>
+<clearFifoType(
+  sourcePort.type, edge.size, network.connectionMapWithoutBroadcast.(edge), sourcePort, source)><else>
+<clearFifoType(
+  targetPort.type, edge.size, network.connectionMap.(edge), targetPort, target)><endif>
+>>
+
+tryClearFifo(edge, src, tgt) ::= <<
+<if (src.instance && tgt.instance)>
+<doClearFifo(
+  edge=edge,
   source=src.instance, sourcePort=edge.source,
-  target=tgt.instance, targetPort=edge.target,
-  count=network.connectionMap.(edge))><endif>
+  target=tgt.instance, targetPort=edge.target)><endif>
 >>
 
-assignFifo(edge) ::= <<
-<tryAssignFifo(edge=edge, src=network.sourceMap.(edge), tgt=network.targetMap.(edge))>
+clearFifo(edge) ::= <<
+<tryClearFifo(edge=edge, src=network.sourceMap.(edge), tgt=network.targetMap.(edge))>
 >>
 
-assignFifos(edges) ::= <<
-<edges: assignFifo()>
+clearFifosWithMap(outgoingMap) ::= <<
+<outgoingMap.keys: { instance | <outgoingMap.(instance).keys: { port | <clearFifo(first(outgoingMap.(instance).(port)))> }> }>
+>>
+
+printClearFifosFunction() ::= <<
+void clear_fifos(){
+	<clearFifosWithMap(network.outgoingMap)>
+}
 >>
 
 ///////////////////////////////////////////////////////////////////////////////
 // Declare actors
 
-declareActor(instance) ::= "<GetInstanceId(instance)>"
+printActor(instance, addComma) ::= <<
+<if(instance.actor || instance.broadcast)><if(addComma)>, <endif><GetInstanceId(instance)><endif>
+>>
+
+
+declareActor(instances, addComma = false) ::= <<
+<if(rest(instances))
+><printActor(first(instances),addComma)
+><	if(first(instances).actor || first(instances).broadcast)
+><declareActor(rest(instances),"true")
+><	else
+><declareActor(rest(instances),addComma)
+	><endif
+><else
+><printActor(first(instances),addComma)
+><endif>
+>>
+
 declareActors(instances) ::= <<
-struct actor_s <instances: declareActor(); wrap, separator=", ">;
+struct actor_s <declareActor(instances)>;
 
 >>
 
-declareActorArray(instance) ::= "&<GetInstanceId(instance)>"
+printActorAddress(instance, addComma) ::= <<
+<if(instance.actor || instance.broadcast)><if(addComma)>, <endif>&<GetInstanceId(instance)><endif>
+>>
 
-declareActorsArray(instances,thread=false) ::= <<
-struct actor_s *actors<if(thread)>_<thread><endif>[] = {<instances: declareActorArray(); wrap, separator=", ">};
+declareActorArray(instances, addComma = false) ::= <<
+<if(rest(instances))
+><printActorAddress(first(instances),addComma)
+><	if(first(instances).actor || first(instances).broadcast)
+><declareActorArray(rest(instances),"true")
+><	else
+><declareActorArray(rest(instances),addComma)
+	><endif
+><else
+><printActorAddress(first(instances),addComma)
+><endif>
+>>
+
+declareActorsArray(instances) ::= <<
+struct actor_s *actors[] = {<declareActorArray(instances)>};
 >>
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -172,22 +276,21 @@ struct actor_s *actors<if(thread)>_<thread><endif>[] = {<instances: declareActor
 
 NumInputs(instance) ::= <<
 <if (instance.actor)
-><instance.actor.inputs.length><
+><length(instance.actor.inputs)><
 elseif (instance.broadcast)>1<else>0<endif>
 >>
 
 NumOutputs(instance) ::= <<
 <if (instance.actor)
-><instance.actor.outputs.length><
+><length(instance.actor.outputs)><
 elseif (instance.broadcast)><instance.broadcast.numOutputs><else>0<endif>
 >>
 
 fillActorStruct(instance) ::= <<
-
-struct actor_s <GetInstanceId(instance)> = {"<GetInstanceId(instance)>", <GetInstanceId(instance)>_scheduler, <
-NumInputs(instance)>, <NumOutputs(instance)>, <
-if(instance.actor.inputs.list.empty || !options.newScheduler)>NULL<else><GetInstanceId(instance)>_predecessors<endif>, <
-if(instance.actor.outputs.list.empty || !options.newScheduler)>NULL<else><GetInstanceId(instance)>_successors<endif>};
+<if(instance.actor || instance.broadcast)>
+struct actor_s <GetInstanceId(instance)> = {"<GetInstanceId(instance)>", <if(network.templateData.instanceNameToGroupIdMap.(instance.id))> <network.templateData.instanceNameToGroupIdMap.(instance.id)> <else>0<endif>, <GetInstanceId(instance)>_scheduler, <
+NumInputs(instance)>, <NumOutputs(instance)>, NULL, NULL, NULL};
+<endif>
 >>
 
 fillActorsStructs(instances) ::= <<
@@ -195,122 +298,148 @@ fillActorsStructs(instances) ::= <<
 >>
 
 ///////////////////////////////////////////////////////////////////////////////
-// declares initialize and scheduler functions
+// declares initialize and scheduler actors functions
 
-initialize(instance) ::= <<
-<if (instance.actor && !instance.actor.initializes.empty)>
-extern void <instance.id>_initialize();
+actorInitialize(instance) ::= <<
+<if (instance.actor)>
+extern void <instance.id>_initialize(<instance.actor.inputs: { port | unsigned int fifo_<port.name>_id}; separator=", ">);
 <endif>
 >>
 
-declareInitializes(instances) ::= <<
-<instances: initialize()>
+declareInstancesInitializes(instances) ::= <<
+<instances: actorInitialize()>
 >>
 
-declareSchedulers(instances) ::= <<
-<instances: {inst | extern void <inst.id>_scheduler(struct schedinfo_s *si);}; separator="\n">
+actionSchedulers(instance) ::= <<
+<if(instance.actor || instance.broadcast)>
+extern void <instance.id>_scheduler(struct schedinfo_s *si);
+<endif>
+>>
+
+declareActionsSchedulers(instances) ::= <<
+<instances: actionSchedulers()>
+>>
+
+///////////////////////////////////////////////////////////////////////////////
+// print timeout
+
+printTimeout() ::= <<
+static int timeout = 0;
+
+int is_timeout(){
+	return timeout;
+}
 >>
 
 ///////////////////////////////////////////////////////////////////////////////
 // print calls to initialize() and scheduler()
 
 printInitialize(instance) ::= <<
-<if (instance.actor && !instance.actor.initializes.empty)
-><instance.id>_initialize();
-<endif>
+<if(instance.actor)>
+<instance.id>_initialize(<instance.actor.inputs: { port | <network.incomingMap.(instance).(port).fifoId>}; separator=",">);<
+endif>
 >>
 
 printInitializes(instances) ::= <<
-<instances: printInitialize()>
+void initialize_instances(){
+	<instances: {instance|<printInitialize(instance)>}>
+}
 >>
 
-printScheduler(isPointer=false) ::= <<
-struct actor_s *my_actor;
-struct schedinfo_s si;
-
-<if(options.needDynamicMapping)>
-clock_t start, end;
-
-semaphoreWait(sched-\>sem_thread); 
-start = clock ();
-
-while (1) {
-	my_actor = sched_get_next(<if(!isPointer)>&<endif>sched);
-	if(my_actor == NULL){
-		semaphoreSet(sched-\>sync-\>sem_monitor);
-		semaphoreWait(sched-\>sem_thread);
-		start = clock ();
-  	}
-  	else{
-		si.num_firings = 0;
-		my_actor-\>sched_func(&si);
-#ifdef PRINT_FIRINGS
-		printf("%5i\t%s\t%s\n", si.num_firings, si.reason == starved ? "starved" : "full", my_actor-\>name);
-#endif
-		if(sched-\>sync-\>active_sync){
-			end = clock ();
-			if((((end - start) / (double)CLOCKS_PER_SEC) \>= SYNC_DELAY)){
-				semaphoreSet(sched-\>sync-\>sem_monitor);
-				semaphoreWait(sched-\>sem_thread);
-				start = clock ();
-			}
-		}
-	}
-}
-<else>
-while (1) {
-	my_actor = sched_get_next<if(options.newScheduler)>_schedulable<endif>(<if(!isPointer)>&<endif>sched);    
-	si.num_firings = 0;
-	my_actor-\>sched_func(&si);
-#ifdef PRINT_FIRINGS
-	printf("%5i\t%s\t%s\n", si.num_firings, si.reason == starved ? "starved" : "full", my_actor-\>name);
-#endif
-	<if (options.newScheduler)>
-	if (si.reason == full <if(options.needPthreads)>&& si.num_firings \>0<endif>) {
-		sched_add_successors(<if(!isPointer)>&<endif>sched, my_actor, si.ports);
-	} else if (si.reason == starved <if(options.needPthreads)>&& si.num_firings \>0<endif>) {
-		sched_add_predecessors(<if(!isPointer)>&<endif>sched, my_actor, si.ports);
-	}
-	<endif>
-}
-<endif>
->>
-
-///////////////////////////////////////////////////////////////////////////////
-// threads
-
-printThread() ::= <<
-void *thread_scheduler(void *data) {
+printScheduler() ::= <<
+void *scheduler(void *data) {
 	struct scheduler_s *sched = (struct scheduler_s *) data;
-	<printScheduler(isPointer="true")>
+	struct actor_s *my_actor;
+	struct schedinfo_s si;
+	<if(options.useGeneticAlgorithm)>
+	
+	int i = 0;
+	clock_t start, end;	
+	semaphore_wait(sched-\>sem_thread);
+	start = clock ();
+	
+	<endif>
+	while (1) {
+		my_actor = sched_get_next<if(options.newScheduler)>_schedulable(sched, RING_TOPOLOGY)<else>(sched)<endif>;
+		if(my_actor != NULL){
+			si.num_firings = 0;
+			my_actor-\>sched_func(&si);
+#ifdef PRINT_FIRINGS
+			printf("%2i  %5i\t%s\t%s\n", sched-\>id, si.num_firings, si.reason == starved ? "starved" : "full", my_actor-\>name);
+#endif
+		}
+		<if(options.useGeneticAlgorithm)>
+		i++;
+		if(i \> STEP_BW_CHK){
+			end = clock ();
+			timeout = ((end - start) / (double)CLOCKS_PER_SEC) \>= TIMEOUT;
+			i = 0;
+		}
+		if(source_is_stopped() || timeout){
+			semaphore_set(sched-\>sync-\>sem_monitor);
+			clean_cache(CACHE_SIZE);
+			semaphore_wait(sched-\>sem_thread);
+			timeout = 0;
+			start = clock ();
+		}
+		<endif>
+	}
 }
+>>
+
+printAddSchedulable(instance) ::= <<
+sched_add_schedulable(<GetInstanceId(instance)>.sched, &<GetInstanceId(instance)>, RING_TOPOLOGY);
+>>
+
+printAllAddSchedulable(instances) ::= <<
+<instances: printAddSchedulable(); separator="\n">
 >>
 
 ///////////////////////////////////////////////////////////////////////////////
 // main
 
-printMain() ::= <<
-int main(int argc, char *argv[]) {
-  init_orcc(argc, argv);
-  
-  scheduler();
+printMedium(port, instance) ::= <<
+<network.templateData.portMedium.(instance).(port).value>
+>>
 
-  printf("End of simulation! Press a key to continue\n");
-  wait_for_key();
+printUpperCaseMedium(port, instance) ::= <<
+<network.templateData.upperCasePortMedium.(instance).(port).value>
+>>
 
-  return 0;
-}
+fifoInit(instance, port, connectionId) ::= <<
+<if(instance.actor)
+>fifo<printMedium(port,instance)>_<port.type>_init(<instance.id>_<port.name>, <connectionId.value>/*To complete !*/);<
+else
+>fifo<printMedium(port,instance)>_<port.type>_init(bcast_<instance.id>_<port.name>, <connectionId.value>/*To complete !*/);<
+endif>
+>>
+
+printFifoInit(instances, ports, connectionId) ::= <<
+<if(first(instances))
+><fifoInit(first(instances), first(ports), first(connectionId))>
+<printFifoInit(rest(instances), rest(ports), rest(connectionId))
+><endif>
 >>
 
 ///////////////////////////////////////////////////////////////////////////////
+
+MediumInclude(medium) ::= <<
+#include "orcc_fifo<medium>.h"
+>>
+
+printMediumInclude(mediums) ::= <<
+<mediums : MediumInclude(); separator="\n">
+>>
+
 // print network
-network(debugFifos, fifoSize, network, options) ::= <<
+network(network, options) ::= <<
+
 // Generated from "<network.name>"
 
 #include \<locale.h\>
 #include \<stdio.h\>
 #include \<stdlib.h\>
-<if (options.needDynamicMapping)>
+<if (options.useGeneticAlgorithm)>
 #include \<time.h\>
 <endif>
 
@@ -318,158 +447,184 @@ network(debugFifos, fifoSize, network, options) ::= <<
 #include "SDL.h"
 #endif
 
-<if (options.needDynamicMapping || options.needPthreads)>
 #ifndef _WIN32
 #define __USE_GNU
 #endif
-<endif>
 
-#include "orcc.h"
+#include "orcc_types.h"
 #include "orcc_fifo.h"
+<printMediumInclude(network.templateData.allMediumsAllInstances)>
 #include "orcc_scheduler.h"
 #include "orcc_util.h"
-<if (options.needPthreads || options.needDynamicMapping)>
+<if (options.threads || options.useGeneticAlgorithm)>
 #include "orcc_thread.h"
 <endif>
-<if(options.needDynamicMapping)>
+<if(options.useGeneticAlgorithm)>
 #include "orcc_genetic.h"
-
-#define THREAD_NB <options.threadsNb>
-#define SYNC_DELAY 3
-
-#define POPULATION_SIZE 20
-#define GENERATION_NB 5
-
-#define KEEP_RATIO 0.5
-#define CROSSOVER_RATIO 0.6
 <endif>
 
-#define SIZE <fifoSize>
+<if (options.useGeneticAlgorithm)>
+#define THREAD_NB <options.threadsNb>
+<else>
+#define MAX_THREAD_NB 10
+<endif>
+<if(options.newScheduler)>
+#define RING_TOPOLOGY <if(options.ringTopology)>1<else>0<endif>
+<endif>
+<if(options.useGeneticAlgorithm)>
+#define POPULATION_SIZE 100
+#define GENERATION_NB 20
+
+#define GROUPS_RATIO 0.8
+#define KEEP_RATIO 0.2
+#define CROSSOVER_RATIO 0.8
+
+#define TIMEOUT 900
+#define STEP_BW_CHK 1000000
+
+#define CACHE_SIZE 4096
+<endif>
+
+#define SIZE <options.fifoSize>
 // #define PRINT_FIRINGS
 
 
 ////////////////////////////////////////////////////////////////////////////////
 // FIFO allocation
-<allocateFifos(network.connections)>
+
+<allocateFifosWithMap(network.outgoingMap)>
+
 ////////////////////////////////////////////////////////////////////////////////
 // FIFO pointer assignments
-<assignFifos(network.connections)>
+
+<assignFifosWithMap(network.outgoingMap)>
 
 ////////////////////////////////////////////////////////////////////////////////
 <declareBroadcasts(network.instances)>
 
 ////////////////////////////////////////////////////////////////////////////////
 // Action schedulers
-<declareInitializes(network.instances)>
-<declareSchedulers(network.instances)>
+
+<declareInstancesInitializes(network.instances)>
+<declareActionsSchedulers(network.instances)>
 
 ////////////////////////////////////////////////////////////////////////////////
 // Declaration of a struct actor for each actor
-<declareActors(network.instances)>
 
-////////////////////////////////////////////////////////////////////////////////
-// Declaration of the predecessors and successors of each actor
-<if(options.newScheduler)><declarePredsSuccs(network.instances)><endif>
+<declareActors(network.instances)>
 
 ////////////////////////////////////////////////////////////////////////////////
 // Declaration of the actors array
 
 <fillActorsStructs(network.instances)>
 
-<if(options.needPthreads)>
-
-<options.threads.keys: {th | <declareActorsArray(instances=options.threads.(th),thread=th)>}; separator="\n">
-
-<printThread()>
-
-static void scheduler() {
-	cpu_set_t cpuset;
-	thread_struct <options.threads.keys: {th | thread_<th>}; separator=", ">;
-	thread_id_struct <options.threads.keys: {th | thread_id_<th>}; separator=", ">;
-	struct scheduler_s <options.threads.keys: {th | sched_<th>}; separator=", ">;
-	
-	<printInitializes(network.instances)>
-	
-	<options.threads.keys: {th | sched_init(&sched_<th>, sizeof(actors_<th>) / sizeof(actors_<th>[0]), actors_<th>, NULL);}; separator="\n">
-	
-	<if(options.newScheduler)>sched_add_schedulable(source.sched, &source);<endif>
-	
-	<options.threads.keys: {th | threadCreate(thread_<th>, thread_scheduler, sched_<th>, thread_id_<th>);}; separator="\n">
-
-	clear_cpu_set(cpuset);
-	<options.threads.keys: {th | set_affinity(cpuset, <i0>, thread_<th>);}; separator="\n">
-
-	<options.threads.keys: {th | threadJoin(thread_<th>);}; separator="\n">
-}
-
-<elseif(options.needDynamicMapping)>
-
 <declareActorsArray(instances=network.instances)>
 
-extern void remove_fps_printing();
+<if (options.useGeneticAlgorithm)>
+extern int source_is_stopped();
+extern int clean_cache(int size);
 
+<printClearFifosFunction()>
 
-<printThread()>
+<printTimeout()>
+<endif>
 
-static void scheduler() {
-	int i;
+////////////////////////////////////////////////////////////////////////////////
+// Actor scheduler
+
+<printScheduler()>
+
+////////////////////////////////////////////////////////////////////////////////
+// Initializer and launcher
+
+<printInitializes(network.instances)>
+
+static void launcher() {
+	int i, display_scheduler = -1;
 	
 	cpu_set_t cpuset;
+	<if(!options.useGeneticAlgorithm)>
+	thread_struct threads[MAX_THREAD_NB];
+	thread_id_struct threads_id[MAX_THREAD_NB];
+	
+	struct mapping_s *mapping = map_actors(actors, sizeof(actors) / sizeof(actors[0]));
+	struct scheduler_s *schedulers = (struct scheduler_s *) malloc(mapping-\>number_of_threads * sizeof(struct scheduler_s));
+	struct waiting_s *waiting_schedulables = (struct waiting_s *) malloc(mapping-\>number_of_threads * sizeof(struct waiting_s));
+	<else>
 	thread_struct threads[THREAD_NB], thread_monitor;
 	thread_id_struct threads_id[THREAD_NB], thread_monitor_id;
 	
 	struct scheduler_s schedulers[THREAD_NB];
+	struct waiting_s waiting_schedulables[THREAD_NB];
+	
 	struct sync_s sched_sync;
 	struct genetic_s genetic_info;
 	struct monitor_s monitoring;
 	
 	sync_init(&sched_sync);
-	genetic_init(&genetic_info, POPULATION_SIZE, GENERATION_NB, KEEP_RATIO, CROSSOVER_RATIO, actors, schedulers, sizeof(actors) / sizeof(actors[0]), THREAD_NB);
+	genetic_init(&genetic_info, POPULATION_SIZE, GENERATION_NB, KEEP_RATIO, CROSSOVER_RATIO, actors, schedulers, sizeof(actors) / sizeof(actors[0]), THREAD_NB, <if(options.newScheduler)>RING_TOPOLOGY<else>0<endif>, <network.templateData.numberOfGroups>, GROUPS_RATIO);
 	monitor_init(&monitoring, &sched_sync, &genetic_info);
+	<endif>
 	
-	<printInitializes(network.instances)>
+	initialize_instances();
 	
-	remove_fps_printing();
-	
-	for(i=0; i \< THREAD_NB; i++){
-		sched_init(&schedulers[i], sizeof(actors) / sizeof(actors[0]), NULL, &sched_sync);
-		threadCreate(threads[i], thread_scheduler, schedulers[i], threads_id[i]);
+	<if(!options.useGeneticAlgorithm)>
+	for(i=0; i \< mapping-\>number_of_threads; i++){
+		sched_init(&schedulers[i], mapping-\>threads_ids[i], mapping-\>partitions_size[i], mapping-\>partitions_of_actors[i], &waiting_schedulables[i], &waiting_schedulables[(i+1) % mapping-\>number_of_threads], mapping-\>number_of_threads, NULL);
 	}
-	threadCreate(thread_monitor, monitor, monitoring, thread_monitor_id);
-
+	<else>
+	for(i=0; i \< THREAD_NB; i++){
+		sched_init(&schedulers[i], i, 0, NULL, &waiting_schedulables[i], &waiting_schedulables[(i+1) % THREAD_NB], THREAD_NB, &sched_sync);
+	}
+	<endif>
+	
+	<if(options.newScheduler && !options.useGeneticAlgorithm)><printAllAddSchedulable(network.templateData.sourceInstances)><endif>
+	
 	clear_cpu_set(cpuset);
-	for(i=0; i \< THREAD_NB; i++){
-		set_affinity(cpuset, i, threads[i]);
+	
+	for(i=0; i \< <if(options.useGeneticAlgorithm)>THREAD_NB<else>mapping-\>number_of_threads<endif>; i++){
+		if(find_actor("display", schedulers[i].actors, schedulers[i].num_actors) == NULL){
+			thread_create(threads[i], scheduler, schedulers[i], threads_id[i]);
+			set_thread_affinity(cpuset, i, threads[i]);
+		} else {
+			display_scheduler = i;
+		}
+	}
+	<if(options.useGeneticAlgorithm)>
+	thread_create(thread_monitor, monitor, monitoring, thread_monitor_id);
+	<endif>
+	
+	if(display_scheduler != -1){
+		(*scheduler)((void*) &schedulers[display_scheduler]);
 	}
 	
-	for(i=0; i \< THREAD_NB; i++){
-		threadJoin(threads[i]);
+	for(i=0; i \< <if(options.useGeneticAlgorithm)>THREAD_NB<else>mapping-\>number_of_threads<endif>; i++){
+		if(i != display_scheduler){
+			thread_join(threads[i]);
+		}
 	}
-	threadJoin(thread_monitor);
+	<if(options.useGeneticAlgorithm)>
+	thread_join(thread_monitor);
+	<endif>
 }
 
-<else>
-
 ////////////////////////////////////////////////////////////////////////////////
-// Actor scheduler
+// Main
 
-<declareActorsArray(instances=network.instances)>
+int main(int argc, char *argv[]) {
+  init_orcc(argc, argv);
 
-static void scheduler() {
-	struct scheduler_s sched;
-	<printInitializes(network.instances)>
-	
-	<if(options.newScheduler)>sched_add_schedulable(&sched, &source);<endif>
+  <if(network.templateData.listMediumInstances)
+  ><printFifoInit(network.templateData.listMediumInstances, network.templateData.listMediumPorts, network.templateData.listConnectionId)
+  ><endif>
 
-	sched_init(&sched, sizeof(actors) / sizeof(actors[0]), actors, NULL);
-	
-	<printScheduler()>
+  launcher();
+
+  printf("End of simulation!<if(!options.useGeneticAlgorithm)> Press a key to continue<endif>\n");
+  <if(!options.useGeneticAlgorithm)>wait_for_key();<endif>
+
+  return 0;
 }
-<endif>
-
-////////////////////////////////////////////////////////////////////////////////
-
-<printMain()>
 
 >>
 

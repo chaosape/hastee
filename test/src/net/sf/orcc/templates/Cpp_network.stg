@@ -1,4 +1,53 @@
 ///////////////////////////////////////////////////////////////////////////////
+// Types and variables
+///////////////////////////////////////////////////////////////////////////////
+
+// the dimensions of a list: [dim1][dim2]...[dimn]
+// does not output anything if $value$ is empty
+listSize(values) ::= <<
+<values : {value | [<value>]} >
+>>
+
+// the values of a list: {val1, val2, ..., valn}
+listValue(values) ::= <<
+{<values; wrap, separator=", ">}
+>>
+
+varDecl(variable) ::= <<
+<variable.type> <variable.indexedName><listSize(variable.type.dimensions)>
+>>
+
+///////////////////////////////////////////////////////////////////////////////
+// Constants
+///////////////////////////////////////////////////////////////////////////////
+
+Constant(constant) ::= <<
+<if (constant.booleanExpr)><printBool(constant)><
+elseif (constant.intExpr)><printInt(constant)><
+elseif (constant.listExpr)><printList(constant)><
+elseif (constant.stringExpr)><printString(constant)><
+endif>
+>>
+
+
+printBool(constant) ::= <<
+<if (constant.value)>true<else>false<endif>
+>>
+
+printInt(number) ::= <<
+<number><if (number.long)>L<endif>
+>>
+
+// the values of a list: {val1, val2, ..., valn}
+printList(constant) ::= <<
+{<constant.value: Constant(); wrap, separator=", ">}
+>>
+
+printString(constant) ::= <<
+"<constant>"
+>>
+
+///////////////////////////////////////////////////////////////////////////////
 // include Actors
 includeActor(actor) ::= <<
 #include "<if (!actor.packageAsList.empty)><actor.packageAsList; separator="/">/<endif><actor.simpleName>.h"
@@ -10,17 +59,9 @@ includeActors(actors) ::= <<
 
 ///////////////////////////////////////////////////////////////////////////////
 // initialize Instances
-argumentList(parameter) ::= <<
-<if (instance.parameters.(parameter).stringExpr)
->"<instance.parameters.(parameter)>"<
-else
-><instance.parameters.(parameter)><
-endif>
->>
-
 initializeInstance(instance) ::= <<
-<if (instance.actor.parameters.list)
->("<instance.hierarchicalId: {id | <id>}; separator="/">", <instance.actor.parameters.list: argumentList(); separator=", ">, NETWORK_PROFILING_MODE)<
+<if (instance.actor.parameters)
+>("<instance.hierarchicalId: {id | <id>}; separator="/">", <instance.actor.parameters: {param | <Constant(instance.parameters.(param.indexedName))>}; separator=", ">, NETWORK_PROFILING_MODE)<
 else
 >("<instance.hierarchicalId: {id | <id>}; separator="/">", NETWORK_PROFILING_MODE)<
 endif>
@@ -56,13 +97,13 @@ doAssignFifo(source, sourcePort, target, targetPort, count) ::= <<
 <if (source.actor)
 ><source.id>.connect(ACTOR_PORT_OUT, <source.actor.packageAsList; separator="::">::<source.actor.simpleName>_<sourcePort.name>, fifo_<count>);<
 else
-><source.id>.connect(ACTOR_PORT_OUT, <network.name>_<sourcePort.name>, fifo_<count>);<
+><source.id>.connect(ACTOR_PORT_OUT, <edge.attributes.("fifoId").value>, fifo_<count>);<
 endif>
 
 <if (target.actor)
 ><target.id>.connect(ACTOR_PORT_IN, <target.actor.packageAsList; separator="::">::<target.actor.simpleName>_<targetPort.name>, fifo_<count>);<
 else
-><target.id>.connect(ACTOR_PORT_IN, <network.name>_<targetPort.name>, fifo_<count>);<
+><target.id>.connect(ACTOR_PORT_IN, <edge.attributes.("fifoId").value>, fifo_<count>);<
 endif>
 >>
 
@@ -220,7 +261,7 @@ printThreads(threads) ::= <<
 ///////////////////////////////////////////////////////////////////////////////
 // network
 
-network(debugFifos, fifoSize, network, options) ::= <<
+network(network, options) ::= <<
 // Generated from "$network.name$"
 
 #include "fifofactory.h"
@@ -247,9 +288,12 @@ TraceAka g_oTracer;
 #endif
 #endif
 
+#undef min
+#undef max
+
 <includeActors(network.actors)>
 
-#define SIZE 1024
+#define SIZE 10000
 
 <declareInstances(network.instances)>
 

@@ -53,39 +53,67 @@ signal <portType(port=port, IOtype=" ", dataType="idata")>
 >>
 
 signalDeclaration(variable) ::= <<
-<if(variable.port)
->signal <variable> : <variable.type>;
-<else
-><if(!variable.type.list)
-  ><if(!variable.assignable)
-    >constant <variable> : <variable.type> := <variable.initialValue>;
-    <else
-    >signal <variable> : <variable.type>;
-    <endif><
-  else
-  ><if(!variable.assignable)
-    ><if(variable.initialized)
-      >type memory_type_<variable> is array (0 to <listSize(variable.type.dimensions)> -1) of <variable.type>;
-constant <variable> : memory_type_<variable> := <variable.initialValue>;
-      <endif><
-    else
-    >type memory_type_<variable> is array (0 to <listSize(variable.type.dimensions)> -1) of <variable.type>;
-signal <variable> : memory_type_<variable>;
-   <endif><
-  endif><
-endif>
+<if(variable.type.list)>
+<if(variable.assignable)>
+-- RAM signals for "<variable.name>"
+signal <variable.name>_wren_p1       : std_logic;
+signal <variable.name>_address_p1    : std_logic_vector(bit_width(<listSize(variable.type.dimensions)>)-1 downto 0);
+signal <variable.name>_data_p1       : std_logic_vector(<variable.type.sizeInBits> -1 downto 0);
+signal <variable.name>_q_p1          : std_logic_vector(<variable.type.sizeInBits> -1 downto 0);
+signal <variable.name>_wren_p2       : std_logic;
+signal <variable.name>_address_p2    : std_logic_vector(bit_width(<listSize(variable.type.dimensions)>)-1 downto 0);
+signal <variable.name>_data_p2       : std_logic_vector(<variable.type.sizeInBits> -1 downto 0);
+signal <variable.name>_q_p2          : std_logic_vector(<variable.type.sizeInBits> -1 downto 0);
+
+<else>
+type memory_type_<variable.name> is array (0 to <listSize(variable.type.dimensions)> -1) of <variable.type>;
+constant <variable.name> : memory_type_<variable.name><if(variable.initialized)> := <variable.initialValue><endif>;
+<endif>
+<else>
+<if(variable.assignable)>
+signal <variable.name> : <variable.type>;
+<else>
+constant <variable.name> : <variable.type> := <variable.initialValue>;
+<endif>
+<endif>
 >>
 
+ramDeclaration(variable) ::= <<
+<if(variable.type.list)>
+<if(variable.assignable)>
+<if(actor.templateData.customInitMap.(variable))>
+-- custom init of arrays not supported
+<else>
+-- RAM instantiation for "<variable.name>"
+DP_genericRam_<variable.name> : entity work.DP_genericRam
+  generic map (
+    depth =\> <listSize(variable.type.dimensions)>,
+    width =\> <variable.type.sizeInBits>,
+    initVal =\> <actor.templateData.initValueMap.(variable)>)
+  port map (
+    clk        =\> clock,
+    wren_p1    =\> <variable.name>_wren_p1,
+    address_p1 =\> <variable.name>_address_p1,
+    data_p1    =\> <variable.name>_data_p1,
+    q_p1       =\> <variable.name>_q_p1,
+    wren_p2    =\> <variable.name>_wren_p2,
+    address_p2 =\> <variable.name>_address_p2,
+    data_p2    =\> <variable.name>_data_p2,
+    q_p2       =\> <variable.name>_q_p2);
 
+<endif>
+<endif>
+<endif>
+>>
 
 ///////////////////////////////////////////////////////////////////////////////
 // Print variables
 ///////////////////////////////////////////////////////////////////////////////
 VarDeclaration(variable) ::= <<
 <if(variable.type.list)
->-- error !!!!! variable <variable> : <variable.type> (0 to <listSize(variable.type.dimensions)> -1)<
+>-- !! error !! variable <variable.name> tabular type size = <listSize(variable.type.dimensions)> of <variable.type>;<
 else
->variable <variable> : <variable.type><
+>variable <variable.indexedName> : <variable.type>;<
 endif>
 >>
 
@@ -95,10 +123,52 @@ endif>
 // Init at reset
 ///////////////////////////////////////////////////////////////////////////////
 stateConst(variable) ::= <<
-<if(variable.initialized)
-  ><if(variable.assignable)
->    <variable> \<= <variable.initialValue>;
-<
+<if(variable.assignable)>
+<if(variable.type.list)>
+--
+<variable.name>_wren_p1    \<= '0';
+<variable.name>_address_p1 \<= (others =\> '0');
+<variable.name>_data_p1    \<= (others =\> '0');
+<variable.name>_wren_p2    \<= '0';
+<variable.name>_address_p2 \<= (others =\> '0');
+<variable.name>_data_p2    \<= (others =\> '0');
+--
+<elseif(variable.initialized)>
+<variable.name> \<= <variable.initialValue>;
+<endif>
+<endif>
+>>
+
+resetReadWriteEnable(variable) ::= <<
+<if(variable.assignable && variable.type.list)>
+<variable.name>_wren_p1 \<= '0';
+<variable.name>_wren_p2 \<= '0';
+<endif>
+>>
+
+///////////////////////////////////////////////////////////////////////////////
+// Print cast operations (when source.size != target.size)
+///////////////////////////////////////////////////////////////////////////////
+CastStore(targetName, targetTypeIsUint, targetSize, value, cast)::= <<
+<if(cast.extended)
+><targetName> := <value><
+else
+><if(targetTypeIsUint)
+><targetName> := ucast(<value>, <value.type.size>, <targetSize>)<  
+  else
+><targetName> := cast(<value>, <value.type.size>, <targetSize>)<  
+  endif><
+endif>
+>>
+
+CastLoad(targetName, targetTypeIsUint, targetSize, source, cast)::= <<
+<if(cast.extended)
+><targetName> := <source><
+else
+><if(targetTypeIsUint)
+><targetName> := ucast(<source>, <source.type.size>, <targetSize>)<
+  else
+><targetName> := cast(<source>, <source.type.size>, caca<targetSize>)<
   endif><
 endif>
 >>
@@ -106,234 +176,209 @@ endif>
 
 
 ///////////////////////////////////////////////////////////////////////////////
-// Print cast operations (when source.size != target.size)
-///////////////////////////////////////////////////////////////////////////////
-CastStore(target, value, cast)::= <<
-<
-if(cast.extended)
-><target> := <value><
-else
-><
-  if(target.type.uint)
->
-<target> := ucast(<value>, <value.type.size>, <target.type.size>)<  
-  else
->
-<target> := cast(<value>, <value.type.size>, <target.type.size>)<  
-  endif
-><
-endif
->
-
->>
-
-CastLoad(target, source, cast)::= <<
-<
-if(cast.extended)
-><target> := <source><
-else
-><
-  if(target.type.uint)
->
-<target> := ucast(<source>, <source.type.size>, <target.variable.type.size>)<
-  else
->
-<target> := cast(<source>, <source.type.size>, <target.variable.type.size>)<
-  endif
-><
-endif
->
-
->>
-
-
-
-///////////////////////////////////////////////////////////////////////////////
 // Instructions
 ///////////////////////////////////////////////////////////////////////////////
-Assign(assign) ::= <<
 
+printAssign(assign) ::= <<
 <if (assign.cast)
-><CastStore(target=assign.target, value=assign.value, cast=assign.cast)>;<
+><CastStore(targetName=assign.target.variable.indexedName,
+targetTypeIsUint=assign.target.variable.type.uint, targetSize=assign.target.variable.type.size,
+value=assign.value, cast=assign.cast)>;<
 else
-><assign.target> := <assign.value>;<
-endif
->
+><assign.target.variable.indexedName> := <assign.value>;<
+endif>
 >>
 
-AssignIndex(AssignIndex) ::= <<
-
-<AssignIndex.target> := to_integer(unsigned(<AssignIndex.indexes: {index | std_logic_vector(to_unsigned(<index>, <index.type.size>))}; separator=" & ">));
+printAssignIndex(assignIndex) ::= <<
+<assignIndex.target.variable.indexedName> := to_integer(unsigned(<assignIndex.indexes: {index | std_logic_vector(to_unsigned(<index>, <index.type.size>))}; separator=" & ">));
 >>
 
-Call(call) ::= <<
-
-<
-if(call.target)
->
-<call.target> := <call.procedure>(<call.procedure.loadedVariables: {var | <var>, }><call.parameters: {param | <param>, }>'1');<
+printCall(call) ::= <<
+<if(call.target)
+><call.target.variable.indexedName> := <call.procedure.name>(<call.procedure.loadedVariables: {var | <var.name>, }><call.parameters: {param | <param>, }>'1');<
 elseif(call.parameters)
->
-<call.procedure>(<call.parameters; separator=", ">, '1');<
+><call.procedure.name>(<call.parameters; separator=", ">, '1');<
 else
->
-<call.procedure>('1');<
-endif
->
+><call.procedure.name>('1');<
+endif>
 >>
 
-Load(load) ::= <<
+getPort(variable) ::= <<
+<if (action.inputPattern.varToPortMap.(variable))
+><action.inputPattern.varToPortMap.(variable).name><
+elseif (action.outputPattern.varToPortMap.(variable))
+><action.outputPattern.varToPortMap.(variable).name><
+else
+><action.peekPattern.varToPortMap.(variable).name><
+endif>
+>>
 
+getPortTypeUint(variable) ::= <<
+<if (action.inputPattern.varToPortMap.(variable))
+><action.inputPattern.varToPortMap.(variable).type.uint><
+elseif (action.outputPattern.varToPortMap.(variable))
+><action.outputPattern.varToPortMap.(variable).type.uint><
+else
+><action.peekPattern.varToPortMap.(variable).type.uint><
+endif>
+>>
+
+getPortTypeSize(variable) ::= <<
+<if (action.inputPattern.varToPortMap.(variable))
+><action.inputPattern.varToPortMap.(variable).type.size><
+elseif (action.outputPattern.varToPortMap.(variable))
+><action.outputPattern.varToPortMap.(variable).type.size><
+else
+><action.peekPattern.varToPortMap.(variable).type.size><
+endif>
+>>
+
+printLoad(load) ::= <<
 <if(load.indexes)
-><
-  if(load.source.variable.port)
-  ><
-    if(load.cast)
-><CastLoad(target=load.target, source=load.source, cast=load.cast)>;<
-    else
-><load.target> := <load.source>;<
-    endif
-  ><
-  else
-><load.target> := <load.source>(<load.indexes : {index | <index>}; separator=", ">);<
-  endif
-><
-else
-><load.target> := <load.source>;<
-endif>
->>
-
-Peek(peek) ::= <<
-
-<if(peek.unit)
-  ><
-  if(peek.target.type.bool)
-><peek.target> := <peek.port>_data;<
-  else
-  ><
-    if(peek.target.type.int)
-><peek.target> := to_integer(signed(<peek.port>_data));<
-    else
-><peek.target> := to_integer(unsigned(<peek.port>_data));<
-    endif
-  ><
-  endif
-><
-else
->-- peek multiple token not coded yet<
+><if (action.inputPattern.varToPortMap.(load.source.variable) || action.outputPattern.varToPortMap.(load.source.variable) || action.peekPattern.varToPortMap.(load.source.variable))
+><if(load.cast)><CastLoad(targetName=load.target.variable.indexedName,
+targetTypeIsUint=load.target.variable.type.uint, targetSize=load.target.variable.size,
+source={<procedure.name>_<getPort(load.source.variable)>}, cast=load.cast)>;<
+else><load.target.variable.indexedName> := <procedure.name>_<getPort(load.source.variable)>;<
 endif
->
-
->>
-
-Read(read) ::= <<
-
-<
-if(read.unit)
-><
-  if(read.target.type.bool)
-  >
-<read.target> := <read.port>_data;<
-  elseif(read.target.type.int)
-  >
-<read.target> := to_integer(signed(<read.port>_data));<
-  elseif (read.target)
-  >
-<read.target> := to_integer(unsigned(<read.port>_data));<
-  endif
-  ><
-else
->-- read multiple token not coded yet<
-endif>
+><else><load.target.variable.indexedName> := <load.source.variable.name>(<load.indexes : {index | <index>}; separator=", ">);<
+endif
+><else><load.target.variable.indexedName> := <load.source.variable.name>;<endif>
 >>
 
 // a "return" must be transformed when the attribute "transformReturn"
 // is present, which normally only occurs when printActionSchedulerInline
 // is called
-Return(return) ::= <<
-
-<
-if(return.value)
-><
-  if(transformReturn)
->
-<procedure>_go := <return.value>;<
+printReturn(return) ::= <<
+<if(return.value)
+ ><if(transformReturn)
+   ><procedure.name>_go := <return.value>;<
   else
->
-return <return.value>;<
-  endif
-><
+   >return <return.value>;<
+  endif><
 endif>
 >>
 
-Store(store) ::= <<
-
+printStore(store) ::= <<
 <if(store.indexes)
-><
-  if(store.target.port)
-  ><
-    if(store.cast)
-><CastStore(value=store.value, target=store.target, cast=store.cast)>;<
-    else
-><store.target> := <store.value>;<
-    endif
-  ><
+ ><if(action.inputPattern.varToPortMap.(store.target.variable) || action.outputPattern.varToPortMap.(store.target.variable) || action.peekPattern.varToPortMap.(store.target.variable))
+  ><if(store.cast)
+    ><CastStore(targetName={<procedure.name>_<getPort(store.target.variable)>},
+targetTypeIsUint=getPortTypeUint(store.target.variable), targetSize=getPortTypeSize(store.target.variable),
+cast=store.cast, value=store.value)>;<
+   else
+    ><procedure.name>_<getPort(store.target.variable)> := <store.value>;<
+   endif><
   else
->
-<store.target>(<store.indexes : {index | <index>}; separator=", ">) \<= <store.value>;<
-  endif
-><
+   ><store.target.variable.name>(<store.indexes : {index | <index>}; separator=", ">) \<= <store.value>;<
+  endif><
 else
->
-<store.target> \<= <store.value>;<
+ ><store.target.variable.name> \<= <store.value>;<
 endif>
 >>
 
-Write(write) ::= <<
+/////////////////////
+// port read/write //
 
-<if(write.target.type.bool)
-><write.port>_idata \<= <write.target>;<
-elseif(write.target.type.int)
-><write.port>_idata \<= std_logic_vector(to_signed(<write.target>, <write.port.type.size>));<
+printRead(procedure, port, variable) ::= <<
+<if(variable)
+><if(port.type.bool)
+><procedure.name>_<variable.name> := <port.name>_data;<
+elseif(port.type.int)
+><procedure.name>_<variable.name> := to_integer(signed(<port.name>_data));<
+elseif(port.type.uint)
+><procedure.name>_<variable.name> := to_integer(unsigned(<port.name>_data));<
+endif
+><endif>
+>>
+
+printWrite(procedure, port, variable) ::= <<
+<if(port.type.bool)
+><port.name>_idata \<= <procedure.name>_<variable.name>;<
+elseif(port.type.int)
+><port.name>_idata \<= std_logic_vector(to_signed(<procedure.name>_<variable.name>, <port.type.size>));<
 else
-><write.port>_idata \<= std_logic_vector(to_unsigned(<write.target>, <write.port.type.size>));<
+><port.name>_idata \<= std_logic_vector(to_unsigned(<procedure.name>_<variable.name>, <port.type.size>));<
 endif>
 >>
 
+///////////////////////////////////////////////////////////////////////////////
+// RAM
+///////////////////////////////////////////////////////////////////////////////
 
+printRamRead(ramRead) ::= <<
+<ramRead.target.variable.indexedName> := <if(ramRead.variable.type.elementType.bool)
+><ramRead.variable.name>_q_p<ramRead.port>(0);<
+elseif(ramRead.variable.type.elementType.int)
+>to_integer(signed(<ramRead.variable.name>_q_p<ramRead.port>));<
+else
+>to_integer(unsigned(<ramRead.variable.name>_q_p<ramRead.port>));<
+endif>
+>>
+
+printRamWrite(ramWrite) ::= <<
+<ramWrite.variable.name>_data_p<ramWrite.port><if(ramWrite.variable.type.elementType.bool)
+>(0) \<= <ramWrite.value>;
+<elseif(ramWrite.variable.type.elementType.int)
+> \<= std_logic_vector(to_signed(<ramWrite.value>, <ramWrite.variable.type.elementType.size>));
+<else
+> \<= std_logic_vector(to_unsigned(<ramWrite.value>, <ramWrite.variable.type.elementType.size>));
+<endif>
+<ramWrite.variable.name>_wren_p<ramWrite.port> \<= '1';
+>>
+
+printRamSetAddress(ramSetAddress) ::= <<
+<ramSetAddress.variable.name>_address_p<ramSetAddress.port> \<= <ramSetAddress.indexes, ramSetAddress.indexesSizes: {index, size | std_logic_vector(to_unsigned(<index>, <size>))}; separator=" & ">;
+>>
 
 ///////////////////////////////////////////////////////////////////////////////
 // Nodes
 ///////////////////////////////////////////////////////////////////////////////
 printInstructions(instructions) ::= <<
-<instructions: {inst | <(inst.class.simpleName)(inst)>}>
+<instructions: {instr | <
+if (instr.assign)><printAssign(assign=instr)><
+elseif (instr.assignIndex)><printAssignIndex(assignIndex=instr)><
+elseif (instr.call)><printCall(call=instr)><
+elseif (instr.load)><printLoad(load=instr)><
+elseif (instr.return)><printReturn(return=instr)><
+elseif (instr.store)><printStore(store=instr)><
+elseif (instr.ramRead)><printRamRead(ramRead=instr)><
+elseif (instr.ramWrite)><printRamWrite(ramWrite=instr)><
+elseif (instr.ramSetAddress)><printRamSetAddress(ramSetAddress=instr)><
+endif>
+
+}>
 >>
 
 printNodes(nodes) ::= <<
-<nodes: {node | <(node.class.simpleName)(node)>}>
+<nodes: {node | <if (node.blockNode)><printBlockNode(node)><
+elseif (node.ifNode)><printIfNode(node)><
+elseif (node.whileNode)><printWhileNode(node)><
+endif>}>
 >>
 
 // if node
-BlockNode(blockNode) ::= <<
+printBlockNode(blockNode) ::= <<
 <printInstructions(blockNode.instructions)>
 >>
 
 // if node
-IfNode(ifNode) ::= <<
+printIfNode(ifNode) ::= <<
 
-if (<ifNode.value>) then
-  <printNodes(ifNode.thenNodes)><if(ifNode.elseNodes)>
-else
-  <printNodes(ifNode.elseNodes)>
-end if;<endif>
-<BlockNode(ifNode.joinNode)>
+if (<ifNode.condition>) then
+  <printNodes(ifNode.thenNodes)><if(ifNode.elseNodes)
+>else
+  <printNodes(ifNode.elseNodes)
+><endif>
+end if;
+<printBlockNode(ifNode.joinNode)>
 >>
 
 // while node
-WhileNode(whileNode) ::= <<
+printWhileNode(whileNode) ::= <<
 
-while (<whileNode.value>) loop
-  <printNodes(whileNode.nodes)><BlockNode(whileNode.joinNode)>
+while (<whileNode.condition>) loop
+  <printNodes(whileNode.nodes)><printBlockNode(whileNode.joinNode)>
 end loop;
 >>
 
@@ -345,16 +390,15 @@ end loop;
 function(procedure) ::= <<
 <if (!procedure.native)
   ><if (procedure.returnType.void)
->procedure <procedure>(<parameters(procedure.parameters.list)>dummy : std_logic) is<
-  else
->function <procedure>(<VarUsed(procedure)><parameters(procedure)>dummy : std_logic) <returnFunction(procedure.returnType)> is<
-  endif>
-  <if(procedure.locals.list)
-><procedure.locals.list: {variable| <VarInFctDeclaration(variable)>;<\n>}><
+>procedure <procedure.name>(<printParameters(procedure.parameters)>dummy : std_logic) is
+<else
+>function <procedure.name>(<VarUsed(procedure)><printParameters(procedure)>dummy : std_logic) <returnFunction(procedure.returnType)> is
+<endif>
+  <if(procedure.locals)
+><procedure.locals: {variable| <VarInFctDeclaration(variable)>;<\n>}><
   endif>
 begin
-  <printNodes(procedure.nodes)>
-end <procedure>;<
+  <printNodes(procedure.nodes)>end <procedure.name>;<
 endif>
 
 >>
@@ -363,26 +407,24 @@ VarUsed(procedure) ::= <<
 <procedure.loadedVariables: functionParameter(); wrap>
 >>
 
-parameters(procedure) ::= <<
-<procedure.parameters.list: functionParameter()>
+printParameters(procedure) ::= <<
+<procedure.parameters: functionParameter()>
 >>
 
 functionParameter(variable) ::= <<
-<if(!variable.type.list)
-><variable> : <typeFunction(variable.type)>; <
-else
+<if(variable.type.list)
 >-- error !!!!! type memory type<
+else
+><variable.name> : <typeFunction(variable.type)>; <
 endif
 >
 >>
 
 VarInFctDeclaration(variable) ::= <<
-<if(variable.port)
->variable <variable> : <typeFunction(variable.type)><
-elseif(!variable.type.list)
->variable <variable> : <typeFunction(variable.type)><
-else
+<if(variable.type.list)
 >-- error !!!!! type memory_type<
+else
+>variable <variable.indexedName> : <typeFunction(variable.type)><
 endif>
 >>
 
@@ -410,32 +452,15 @@ endif>
 ///////////////////////////////////////////////////////////////////////////////
 // Action
 ///////////////////////////////////////////////////////////////////////////////
-procedure(procedure, transformReturn) ::= <<
+printProcedure(procedure, transformReturn) ::= <<
 <printNodes(procedure.nodes)>
 >>
 
 printLocals(procedure) ::= <<
-<if(procedure.locals.list)
-><procedure.locals.list: {variable| <VarDeclaration(variable)>;<\n>}><
+<if(procedure.locals)
+><procedure.locals: VarDeclaration(); separator="\n"><
 endif>
 >>
-
-printActionLocalSchedul(action) ::= <<
-<printLocals(action.scheduler)
->variable <action.scheduler>_go : std_logic;
-
->>
-
-printActionLocalBody(action) ::= <<
-<printLocals(action.body)>
->>
-
-// prints the body of the given action "inline" (ie not within a function)
-printActionBodyInline(action) ::= <<
-<procedure(procedure=action.body, transformReturn="true")>
->>
-
-
 
 ///////////////////////////////////////////////////////////////////////////////
 // Management of Outputs 
@@ -444,9 +469,10 @@ OutputsManag() ::= <<
 ---------------------------------------------------------------------------
 -- Transmission manager
 ---------------------------------------------------------------------------
-<actor.outputs.list : printArbiter(); separator="\n\n">
+<actor.outputs : printArbiter(); separator="\n\n">
 >>
 
+// instanciate an arbiter which manage the communication between actors.
 printArbiter(port) ::= <<
 comArbiter_<port.name> : entity work.comArbiter
 generic map (
@@ -467,17 +493,22 @@ port map (
 // Actor VHDL Architecture - Scheduler process
 ///////////////////////////////////////////////////////////////////////////////
 Actor_Scheduler(actor) ::= <<
-<actor.simpleName>_sceduler : process(<sensitivity(actor)>)
-  <actor.actions : printActionLocalSchedul()>--
+<actor.simpleName>_scheduler : process(<actor.templateData.signals; wrap, anchor, separator=", ">)
+  <actor.actions : { action |<printLocals(action.scheduler)>
+variable <action.scheduler.name>_go : std_logic; <action.inputPattern.ports: {port | <if(action.peekPattern.portToVarMap.(port))>
+variable <action.scheduler.name>_<port.name> : <port.type>;<
+endif>}; separator="\n">
+}>  --
 begin
-  <actor.actions: printTemplateDataScheduler(); separator="\n\n">
-
+  <actor.actions: {action|-- test if "<action.name>" action is schedulable
+<action.inputPattern.ports: { port |<printRead(procedure=action.scheduler, port=port, variable=action.peekPattern.portToVarMap.(port))>}; separator="\n">
+<printProcedure(procedure=action.scheduler, transformReturn="true")>}; separator="\n">
   --
   -- Test the action's inputs to fire (or not) an action  
-  <actor.actions : {actions|<actions>_go \<= '0';}; separator="\n">
-  <actor.inputs.list :{port|<port.name>_ack \<= '0';}; separator="\n">  
-<if(actor.actionScheduler.fsm)    
->  <printActionFireFSM(actions=actor.actionScheduler.actions, fsm=actor.actionScheduler.fsm)><
+  <actor.actions : {action|<action.name>_go \<= '0';}; separator="\n">
+  <actor.inputs :{port|<port.name>_ack \<= '0';}; separator="\n">  
+<if(actor.fsm)    
+>  <printActionFireFSM(actions=actor.actionsOutsideFsm, fsm=actor.fsm)><
 else  
 >  if <actor.actions: printActionFire(); separator="\n  elsif">
   end if;<
@@ -487,51 +518,23 @@ end process;
 
 >>
 
-// print the sensitivity list of the actor
-sensitivity(actor) ::= <<
-<actor.inputs.list: {port|<port.name>_send}; separator=", "><
-if(actor.inputs.list)
-><if(actor.outputs.list || actor.templateData || actor.actionScheduler.fsm)
->, <
-endif><
-endif
-><actor.outputs.list: {port|<port.name>_rdy}; separator=", "><
-if(actor.outputs.list)
-><if(actor.actionScheduler.fsm || actor.templateData || actor.actionScheduler.fsm)
->, <
-endif><
-endif
-><actor.templateData: {d|<d>}; separator=", "><
-if(actor.templateData && actor.actionScheduler.fsm)    
->, FSM<
-elseif(actor.actionScheduler.fsm)
->FSM<
-endif>
->>
-
-// prints the scheduler of the given action according to the actor's template data
-printTemplateDataScheduler(action) ::= <<
--- test if "<action>" action is schedulable
-<procedure(procedure=action.scheduler, transformReturn="true")>
->>
-
-
+// prints the condition on the ack and go signals according to the input and output pattern
 printActionFire(action) ::= <<
-((isSchedulable_<action>_go <action.inputPattern.keys : {port| and <port.name>_send }>) = '1') then
-<if(action.inputPattern.keys)
->< if(action.outputPattern.keys)
->    <action>_go  \<= isSchedulable_<action>_go and <action.outputPattern.keys : {port|<port.name>_rdy}; separator=" and ">;
-    <action.inputPattern.keys : {
-      port|<port.name>_ack \<= isSchedulable_<action>_go and <action.outputPattern.keys : {port|<port.name>_rdy}; separator=" and ">} ; separator=";\n">;<
+((isSchedulable_<action.name>_go <action.inputPattern.ports : {port| and <port.name>_send }>) = '1') then
+<if(action.inputPattern.ports)
+>< if(action.outputPattern.ports)
+>    <action.name>_go \<= isSchedulable_<action.name>_go and <action.outputPattern.ports : {port|<port.name>_rdy}; separator=" and ">;
+    <action.inputPattern.ports : {
+      port|<port.name>_ack \<= isSchedulable_<action.name>_go and <action.outputPattern.ports : {port|<port.name>_rdy}; separator=" and ">} ; separator=";\n">;<
   else
->    <action>_go  \<= isSchedulable_<action>_go;
-    <action.inputPattern.keys : {port|<port.name>_ack \<= isSchedulable_<action>_go;} ; separator="\n"><
+>    <action.name>_go \<= isSchedulable_<action.name>_go;
+    <action.inputPattern.ports : {port|<port.name>_ack \<= isSchedulable_<action.name>_go;} ; separator="\n"><
   endif><
 else
->< if(action.outputPattern.keys)
->    <action>_go  \<= isSchedulable_<action>_go and <action.outputPattern.keys : {port|<port.name>_rdy}; separator=" and ">;<
+>< if(action.outputPattern.ports)
+>    <action.name>_go \<= isSchedulable_<action.name>_go and <action.outputPattern.ports : {port|<port.name>_rdy}; separator=" and ">;<
   else
->    <action>_go  \<= isSchedulable_<action>_go;<
+>    <action.name>_go \<= isSchedulable_<action.name>_go;<
   endif><
 endif>  
 >>
@@ -540,25 +543,25 @@ printActionFireFSM(actions, fsm) ::= <<
 <if(actions)
 >if<printActionFire(actions)>
 else
-  case FSM is
-  <TransitionFire()>
-      end case;
+case FSM is
+<TransitionFire()>
+  end case;
 end if;<
 else
->  case FSM is
+>case FSM is
 <fsm.transitions: TransitionFire(); separator="\n\n">
   end case;<
 endif>
 >>
 
-TransitionFire(transition) ::= <<
-    when s_<transition.sourceState> =\>
-      if <transition.nextStateInfo: actionFire(); separator="\n      elsif">
+TransitionFire(transitions) ::= <<
+    when s_<transitions.sourceState.name> =\>
+      if <transitions.list: actionFire(); separator="\n      elsif">
       end if;
 >>
 
-actionFire(nextstate) ::= <<
-    <printActionFire(nextstate.action)>
+actionFire(transition) ::= <<
+    <printActionFire(transition.action)>
 >>
 
 
@@ -568,65 +571,66 @@ actionFire(nextstate) ::= <<
 ///////////////////////////////////////////////////////////////////////////////
 Actor_Exec(actor) ::= <<
 <actor.simpleName>_execute : process (reset_n, clock) is
-  <actor.actions: printActionLocalBody()>  --
+  <actor.actions: {action |<printLocals(action.body)><
+action.inputPattern.ports : { port | 
+variable <action.body.name>_<port.name> : <port.type>;}><
+action.outputPattern.ports: { port | 
+variable <action.body.name>_<port.name> : <port.type>;}>
+}>  --
 begin
   if reset_n = '0' then
-<if(actor.stateVars.list)
-><actor.stateVars.list: stateConst()>    --<
-endif>
-    <actor.outputs.list : port_out_init()>
-<if(actor.actionScheduler.fsm)    
->    FSM    \<= s_<actor.actionScheduler.fsm.initialState>;
-<
-endif>  --
+<if(actor.stateVars)>
+    <actor.stateVars: stateConst()>    --
+<endif>
+    <actor.outputs : port_out_init()>    --
+<if(actor.fsm)>
+    FSM    \<= s_<actor.fsm.initialState.name>;    --
+<endif>
   elsif rising_edge(clock) then
-    <actor.outputs.list :{port|<port.name>_isend \<= '0';}; separator="\n">
+    <actor.outputs :{port|<port.name>_isend \<= '0';}; separator="\n">
+    <actor.stateVars: resetReadWriteEnable()>
     --  
-<if(actor.actionScheduler.fsm)    
->    <executeCoreFSM(actions=actor.actionScheduler.actions, fsm=actor.actionScheduler.fsm)><
-else
->    <executeCore(actor.actions)><
-endif>
-
+<if(actor.fsm)>
+    <executeCoreFSM(actions=actor.actionsOutsideFsm, fsm=actor.fsm)>
+<else>
+    <executeCore(actor.actions)>
+<endif>
   end if;
 end process <actor.simpleName>_execute;
 
 >>
 
-actionTestSceduler(action) ::= <<
-(<action>_go = '1') then
-  -- body of "<action>" action
-  <printActionBodyInline(action)>  --<actor.outputs.list: writeManagement()>
+printActionBody(action) ::= <<
+<action.inputPattern.ports: { port |<printRead(procedure=action.body, port=port, variable=action.inputPattern.portToVarMap.(port))>}; separator="\n">
+<printProcedure(procedure=action.body, transformReturn="true")><
+action.outputPattern.ports: { port |<printWrite(procedure=action.body, port=port, variable=action.outputPattern.portToVarMap.(port))>}; separator="\n">
 >>
 
-writeManagement(port) ::= <<
-<if(action.outputPattern.(port))
->
-  <port.name>_isend \<= '1';<
-endif>
+actionTestScheduler(action) ::= <<
+(<action.name>_go = '1') then
+  -- body of "<action.name>" action
+  <printActionBody(action)><
+  if(action.outputPattern.ports)>
+  <action.outputPattern.ports: {port|<port.name>_isend \<= '1';}; separator="\n">
+  <endif>
 >>
 
 port_out_init(port) ::=<<
 
 <port.name>_isend \<= '0';
-<if(port.type.bool)
-><port.name>_idata  \<= '0';<
-else
-><port.name>_idata  \<= (others =\> '0');<
-endif>
+<if(port.type.bool)>
+<port.name>_idata \<= '0';
+<else>
+<port.name>_idata \<= (others =\> '0');
+<endif>
 >>
 
 ///////////////////////////////////////////////////////////////////////////////
 // Core of an action - NO FSM
 
 executeCore(actions) ::= <<
-    if <executeIndent(actions)>
->>
-
-// just to have a correct indentation
-executeIndent(actions) ::= <<
-    <actions: actionTestSceduler(); separator="\nelsif ">
-    end if;
+if <actions: actionTestScheduler(); separator="--\nelsif ">--
+end if;
 >>
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -636,26 +640,25 @@ executeCoreFSM(actions, fsm) ::= <<
 <if(actions)
 ><executeCore(actions)>
 else
-  case FSM is
+case FSM is
   <switchTransition()>
-      end case;
+end case;
 end if;<
 else
->    case FSM is
+>case FSM is
   <fsm.transitions: switchTransition(); separator="\n\n">
-    end case;<
+end case;<
 endif>
 >>
 
-switchTransition(transition) ::= <<
-    when s_<transition.sourceState> =\>
-      if <transition.nextStateInfo: actionTestState(); separator="\n      elsif">
-      end if;
+switchTransition(transitions) ::= <<
+when s_<transitions.sourceState.name> =\>
+  if <transitions.list: actionTestState(); separator="\n  elsif">
+  end if;
 >>
 
-actionTestState(nextState) ::= <<
-      <actionTestSceduler(nextState.action)>
-        FSM \<= s_<nextState.targetState>;
+actionTestState(transition) ::= <<
+  <actionTestScheduler(transition.action)>    FSM \<= s_<transition.state.name>;
 >>
 
 
@@ -696,10 +699,10 @@ entity <actor.simpleName> is
   port (
   -- Inputs
   clock    : in  std_logic;
-  reset_n  : in  std_logic<if(actor.inputs.list || actor.outputs.list)>;<endif>
-  <actor.inputs.list: PrintInputPorts(); separator=";\n"><if(actor.inputs.list && actor.outputs.list)>;<endif>
+  reset_n  : in  std_logic<if(actor.inputs || actor.outputs)>;<endif>
+  <actor.inputs: PrintInputPorts(); separator=";\n"><if(actor.inputs && actor.outputs)>;<endif>
   -- Outputs
-  <actor.outputs.list: PrintOutputPorts(); separator=";\n">);
+  <actor.outputs: PrintOutputPorts(); separator=";\n">);
 end <actor.simpleName>;
 
 
@@ -709,27 +712,26 @@ architecture rtl_<actor.simpleName> of <actor.simpleName> is
   ---------------------------------------------------------------------------
   -- Signal & constant declaration
   ---------------------------------------------------------------------------
-  <actor.actions:       {action| signal <action>_go    : std_logic;}; separator="\n">
+  <actor.actions:       {action| signal <action.name>_go    : std_logic;}; separator="\n">
   --
-  <actor.outputs.list :IOsManagementSignals(); separator="\n">
+  <actor.outputs :IOsManagementSignals(); separator="\n">
   --
-  <actor.stateVars.list: signalDeclaration()>
+  <actor.stateVars: signalDeclaration()>
 
-<if (actor.procs.list)
+<if (actor.procs)
 >  ---------------------------------------------------------------------------
   -- Functions and procedures
   ---------------------------------------------------------------------------
-  <actor.procs.list: {proc|<function(procedure=proc)>}; separator="\n"><
-endif>
+  <actor.procs: {proc|<function(procedure=proc)>}; separator="\n\n">
+<endif>
 
-  <if(actor.actionScheduler.fsm)
-  >  ---------------------------------------------------------------------------
+<if(actor.fsm)
+>  ---------------------------------------------------------------------------
   -- FSM
   ---------------------------------------------------------------------------
-  type FSM_type is (<actor.actionScheduler.fsm.states: {state|s_<state>}; separator=", ">);
-  signal FSM : FSM_type;<
-  endif>
-
+  type FSM_type is (<actor.fsm.states: {state|s_<state.name>}; separator=", ">);
+  signal FSM : FSM_type;
+<endif>
 
 begin
 
@@ -738,6 +740,8 @@ begin
   <Actor_Exec(actor)>
 
   <OutputsManag()>
+  
+  <actor.stateVars: ramDeclaration()>
 
 end architecture rtl_<actor.simpleName>;
 
