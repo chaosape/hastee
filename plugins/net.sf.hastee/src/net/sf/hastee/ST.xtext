@@ -168,7 +168,10 @@ Args:
 	args+=Arg (',' args+=Arg)*;
 
 Arg:
-	value=ExprNoComma;
+	value=ExprNoComma
+	| bool='true'
+	| bool='false';
+	
 
 	// primary expression
 ExprPrimary:
