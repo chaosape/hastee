@@ -6,6 +6,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Properties;
+import java.util.Stack;
 
 import org.antlr.runtime.RecognitionException;
 import org.antlr.runtime.Token;
@@ -19,33 +20,65 @@ import org.eclipse.xtext.parser.antlr.Lexer;
  */
 public class CustomSTLexer extends Lexer {
 
-	public static final int AND;
-	public static final int AT;
-	public static final int BANG;
-	public static final int COLON;
-	public static final int COMMA;
-	public static final int DOT;
-	public static final int ELLIPSIS;
-	public static final int ELSE;
-	public static final int ELSEIF;
-	public static final int ENDIF;
-	public static final int EQUALS;
-	public static final int ID;
-	public static final int IF;
-	public static final int LBRACK;
-	public static final int LCURLY;
-	public static final int LDELIM;
-	public static final int LPAREN;
-	public static final int NEWLINE;
-	public static final int OR;
-	public static final int PIPE;
-	public static final int RBRACK;
-	public static final int RCURLY;
-	public static final int RDELIM;
-	public static final int RPAREN;
-	public static final int SEMI;
-	public static final int STRING;
-	public static final int SUPER;
+	private static enum LexingState {
+		TOP_LEVEL
+	}
+
+	private static final int AND;
+
+	private static final int AT;
+
+	private static final int BANG;
+
+	private static final int COLON;
+
+	private static final int COMMA;
+
+	private static final int DOT;
+
+	private static final int ELLIPSIS;
+
+	private static final int EQUALS;
+
+	private static final int ID;
+
+	private static final Map<String, Integer> keywords;
+
+	private static final int LBRACK;
+
+	private static final int LCURLY;
+
+	private static final int LDELIM;
+
+	private static final int LPAREN;
+
+	private static final int NEWLINE;
+
+	private static final int OR;
+
+	private static final int PIPE;
+
+	private static final int QUOTE;
+
+	private static final int RBRACK;
+
+	private static final int RCURLY;
+
+	private static final int RDELIM;
+
+	private static final int RPAREN;
+
+	private static final int SEMI;
+
+	private static final int STRING;
+
+	private static final int TMPL_BEGIN;
+
+	private static final int TMPL_DEF;
+
+	private static final int TMPL_END;
+
+	private static final int WS;
 
 	static {
 		Map<String, Integer> tokenMap = initTokenValues();
@@ -56,12 +89,7 @@ public class CustomSTLexer extends Lexer {
 		COMMA = getTokenId(tokenMap, ",");
 		DOT = getTokenId(tokenMap, ".");
 		ELLIPSIS = getTokenId(tokenMap, "...");
-		ELSE = getTokenId(tokenMap, "else");
-		ELSEIF = getTokenId(tokenMap, "elseif");
-		ENDIF = getTokenId(tokenMap, "endif");
 		EQUALS = getTokenId(tokenMap, "=");
-		ID = getTokenId(tokenMap, "RULE_ID");
-		IF = getTokenId(tokenMap, "if");
 		LBRACK = getTokenId(tokenMap, "[");
 		LCURLY = getTokenId(tokenMap, "{");
 		LDELIM = getTokenId(tokenMap, "<");
@@ -69,13 +97,30 @@ public class CustomSTLexer extends Lexer {
 		NEWLINE = getTokenId(tokenMap, "\n");
 		OR = getTokenId(tokenMap, "||");
 		PIPE = getTokenId(tokenMap, "|");
+		QUOTE = getTokenId(tokenMap, "\"");
 		RBRACK = getTokenId(tokenMap, "]");
 		RCURLY = getTokenId(tokenMap, "}");
 		RDELIM = getTokenId(tokenMap, ">");
 		RPAREN = getTokenId(tokenMap, ")");
 		SEMI = getTokenId(tokenMap, ";");
-		STRING = getTokenId(tokenMap, "STRING");
-		SUPER = getTokenId(tokenMap, "super");
+		TMPL_BEGIN = getTokenId(tokenMap, "<<");
+		TMPL_DEF = getTokenId(tokenMap, "::=");
+		TMPL_END = getTokenId(tokenMap, ">>");
+
+		ID = getTokenId(tokenMap, "RULE_ID");
+		STRING = getTokenId(tokenMap, "RULE_STRING");
+		WS = getTokenId(tokenMap, "RULE_WS");
+
+		keywords = new HashMap<String, Integer>();
+		keywords.put("default", getTokenId(tokenMap, "default"));
+		keywords.put("else", getTokenId(tokenMap, "else"));
+		keywords.put("elseif", getTokenId(tokenMap, "elseif"));
+		keywords.put("endif", getTokenId(tokenMap, "endif"));
+		keywords.put("false", getTokenId(tokenMap, "false"));
+		keywords.put("if", getTokenId(tokenMap, "if"));
+		keywords.put("import", getTokenId(tokenMap, "import"));
+		keywords.put("super", getTokenId(tokenMap, "super"));
+		keywords.put("true", getTokenId(tokenMap, "true"));
 	}
 
 	private static int getTokenId(Map<String, Integer> tokenMap, String name) {
@@ -109,16 +154,165 @@ public class CustomSTLexer extends Lexer {
 		return tokenMap;
 	}
 
+	public static boolean isIDLetter(int c) {
+		return c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c >= '0'
+				&& c <= '9' || c == '_' || c == '/';
+	}
+
+	public static boolean isIDStartLetter(int c) {
+		return c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c == '_';
+	}
+
+	public static boolean isWS(int c) {
+		return c == ' ' || c == '\t' || c == '\n' || c == '\r';
+	}
+
+	private int delimiterStartChar = '<';
+
+	private int delimiterStopChar = '>';
+
+	private Stack<LexingState> lexingState;
+
+	public CustomSTLexer() {
+		lexingState = new Stack<CustomSTLexer.LexingState>();
+		lexingState.push(LexingState.TOP_LEVEL);
+	}
+
+	/** ':' | '::=' */
+	private int mColonOrTmplDef() {
+		input.consume();
+		int c = input.LA(1);
+		if (c == ':') {
+			c = input.LA(2);
+			if (c == '=') {
+				return TMPL_DEF;
+			}
+		}
+		return COLON;
+	}
+
+	/** ID : ('a'..'z'|'A'..'Z'|'_'|'/') ('a'..'z'|'A'..'Z'|'0'..'9'|'_'|'/')* ; */
+	private int mIDOrKeyword() {
+		input.consume();
+		int c = input.LA(1);
+		while (isIDLetter(c)) {
+			input.consume();
+			c = input.LA(1);
+		}
+
+		// emit an ID token tentatively
+		state.type = ID;
+		Token id = emit();
+		String name = id.getText();
+		Integer value = keywords.get(name);
+		if (value != null) {
+			// if ID is a keyword, forget the token emitted and set the type
+			state.token = null;
+			state.type = value;
+		}
+		return state.type;
+	}
+
+	/** STRING : '"' ( '\\' '"' | '\\' ~'"' | ~('\\'|'"') )* '"' ; */
+	private int mSTRING() {
+		input.consume();
+		int c = input.LA(1);
+		while (c != '"') {
+			input.consume();
+			if (c == '\\') {
+				// in STRING \\ can escape anything
+				input.consume();
+			}
+			c = input.LA(1);
+		}
+		input.consume();
+
+		return STRING;
+	}
+
 	@Override
 	public void mTokens() throws RecognitionException {
-		// TODO Auto-generated method stub
-		state.type = ELSE;
+		LexingState topState = lexingState.peek();
+		switch (topState) {
+		case TOP_LEVEL:
+			state.type = mTopLevel();
+			break;
+		}
+	}
 
-		// to skip tokens
-		state.token = Token.SKIP_TOKEN;
+	private int mTopLevel() {
+		int c = input.LA(1);
+		if (isWS(c)) {
+			return mWS(c);
+		} else if (isIDStartLetter(c)) {
+			return mIDOrKeyword();
+		} else {
+			switch (c) {
+			case '@':
+				input.consume();
+				return AT;
+			case ':':
+				return mColonOrTmplDef();
+			case ',':
+				input.consume();
+				return COMMA;
+			case '.':
+				input.consume();
+				return DOT;
+			case '=':
+				input.consume();
+				return EQUALS;
+			case '[':
+				input.consume();
+				return LBRACK;
+			case '(':
+				input.consume();
+				return LPAREN;
+			case '"':
+				input.consume();
+				return QUOTE;
+			case ']':
+				input.consume();
+				return RBRACK;
+			case ')':
+				input.consume();
+				return RPAREN;
+			case '<':
+				return mTmplBegin();
+			case '>':
+				return mTmplEnd();
+			}
+		}
+		return 0;
+	}
 
-		// look ahead
-		// int c = input.LA(1);
+	private int mTmplBegin() {
+		input.consume();
+		int c = input.LA(1);
+		if (c == '<') {
+			input.consume();
+			return TMPL_BEGIN;
+		}
+		return 0;
+	}
+
+	private int mTmplEnd() {
+		input.consume();
+		int c = input.LA(1);
+		if (c == '>') {
+			input.consume();
+			return TMPL_END;
+		}
+		return 0;
+	}
+
+	private int mWS(int c) {
+		while (Character.isWhitespace((char) c)) {
+			input.consume();
+			c = input.LA(1);
+		}
+
+		return WS;
 	}
 
 }
