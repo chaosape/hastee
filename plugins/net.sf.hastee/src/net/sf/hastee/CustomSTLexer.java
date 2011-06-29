@@ -1,13 +1,16 @@
 package net.sf.hastee;
 
+import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Properties;
 import java.util.Stack;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
+import org.antlr.runtime.NoViableAltException;
 import org.antlr.runtime.RecognitionException;
 import org.antlr.runtime.Token;
 import org.eclipse.xtext.parser.antlr.Lexer;
@@ -21,7 +24,7 @@ import org.eclipse.xtext.parser.antlr.Lexer;
 public class CustomSTLexer extends Lexer {
 
 	private static enum LexingState {
-		TOP_LEVEL
+		TOP_LEVEL, INSIDE_STRING, INSIDE_BIGSTRING, INSIDE_EXPR
 	}
 
 	private static final int AND;
@@ -52,6 +55,8 @@ public class CustomSTLexer extends Lexer {
 
 	private static final int LPAREN;
 
+	private static final int ML_COMMENT;
+
 	private static final int NEWLINE;
 
 	private static final int OR;
@@ -69,6 +74,8 @@ public class CustomSTLexer extends Lexer {
 	private static final int RPAREN;
 
 	private static final int SEMI;
+
+	private static final int SL_COMMENT;
 
 	private static final int STRING;
 
@@ -108,6 +115,8 @@ public class CustomSTLexer extends Lexer {
 		TMPL_END = getTokenId(tokenMap, ">>");
 
 		ID = getTokenId(tokenMap, "RULE_ID");
+		ML_COMMENT = getTokenId(tokenMap, "RULE_ML_COMMENT");
+		SL_COMMENT = getTokenId(tokenMap, "RULE_SL_COMMENT");
 		STRING = getTokenId(tokenMap, "RULE_STRING");
 		WS = getTokenId(tokenMap, "RULE_WS");
 
@@ -139,18 +148,27 @@ public class CustomSTLexer extends Lexer {
 		ClassLoader loader = CustomSTLexer.class.getClassLoader();
 		InputStream in = loader
 				.getResourceAsStream("net/sf/hastee/parser/antlr/internal/InternalST.tokens");
-		Properties properties = new Properties();
+		BufferedReader br = new BufferedReader(new InputStreamReader(in));
 		try {
-			properties.load(in);
+			String line = br.readLine();
+			Pattern pattern = Pattern.compile("(('(.*)')|(.*))=(\\d+)");
+			while (line != null) {
+				Matcher m = pattern.matcher(line);
+				if (!m.matches()) {
+					throw new IllegalStateException("Couldn't match line : '"
+							+ line + "'");
+				}
+
+				int antlrTokenType = Integer.parseInt(m.group(5));
+				String antlrTokenDef = m.group(3) != null ? m.group(3) : m
+						.group(4);
+				tokenMap.put(antlrTokenDef, antlrTokenType);
+				line = br.readLine();
+			}
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-		for (Entry<Object, Object> entry : properties.entrySet()) {
-			String key = (String) entry.getKey();
-			key = key.replaceFirst("'([^']*)'", "$1");
-			Integer value = Integer.valueOf((String) entry.getValue());
-			tokenMap.put(key, value);
-		}
+
 		return tokenMap;
 	}
 
@@ -185,10 +203,54 @@ public class CustomSTLexer extends Lexer {
 		if (c == ':') {
 			c = input.LA(2);
 			if (c == '=') {
+				input.consume();
+				input.consume();
 				return TMPL_DEF;
 			}
 		}
 		return COLON;
+	}
+
+	/** SL_COMMENT | ML_COMMENT */
+	private int mComment() throws RecognitionException {
+		input.consume();
+		int c = input.LA(1);
+		if (c == '/') {
+			return mCommentSL();
+		} else if (c == '*') {
+			return mCommentML();
+		}
+
+		throw new NoViableAltException("mTopLevel", 0, state.type, input);
+	}
+
+	/** ML_COMMENT: '/' *' ( options {greedy=false;} : . )* '*' '/' */
+	private int mCommentML() {
+		input.consume();
+		while (!(input.LA(1) == '*' && input.LA(2) == '/')) {
+			input.consume();
+		}
+		return ML_COMMENT;
+	}
+
+	/** SL_COMMENT: '//' ~('\n'|'\r')* '\r'? '\n' */
+	private int mCommentSL() {
+		input.consume();
+		int c = input.LA(1);
+		while (c != '\r' && c != '\n') {
+			input.consume();
+			c = input.LA(1);
+		}
+
+		input.consume();
+		if (c == '\r') {
+			c = input.LA(1);
+			if (c == '\n') {
+				input.consume();
+			}
+		}
+
+		return SL_COMMENT;
 	}
 
 	/** ID : ('a'..'z'|'A'..'Z'|'_'|'/') ('a'..'z'|'A'..'Z'|'0'..'9'|'_'|'/')* ; */
@@ -230,17 +292,38 @@ public class CustomSTLexer extends Lexer {
 		return STRING;
 	}
 
+	private int mTmplBegin() throws RecognitionException {
+		input.consume();
+		int c = input.LA(1);
+		if (c == '<') {
+			input.consume();
+			lexingState.push(LexingState.INSIDE_BIGSTRING);
+			return TMPL_BEGIN;
+		}
+		throw new NoViableAltException("mTmplBegin", 0, state.type, input);
+	}
+
+	private int mTmplEnd() throws RecognitionException {
+		input.consume();
+		int c = input.LA(1);
+		if (c == '>') {
+			input.consume();
+			return TMPL_END;
+		}
+		throw new NoViableAltException("mTmplEnd", 0, state.type, input);
+	}
+
 	@Override
 	public void mTokens() throws RecognitionException {
 		LexingState topState = lexingState.peek();
-		switch (topState) {
-		case TOP_LEVEL:
+		//switch (topState) {
+		//case TOP_LEVEL:
 			state.type = mTopLevel();
-			break;
-		}
+		//	break;
+		//}
 	}
 
-	private int mTopLevel() {
+	private int mTopLevel() throws RecognitionException {
 		int c = input.LA(1);
 		if (isWS(c)) {
 			return mWS(c);
@@ -248,6 +331,8 @@ public class CustomSTLexer extends Lexer {
 			return mIDOrKeyword();
 		} else {
 			switch (c) {
+			case '/':
+				return mComment();
 			case '@':
 				input.consume();
 				return AT;
@@ -270,6 +355,7 @@ public class CustomSTLexer extends Lexer {
 				return LPAREN;
 			case '"':
 				input.consume();
+				lexingState.push(LexingState.INSIDE_STRING);
 				return QUOTE;
 			case ']':
 				input.consume();
@@ -283,27 +369,8 @@ public class CustomSTLexer extends Lexer {
 				return mTmplEnd();
 			}
 		}
-		return 0;
-	}
 
-	private int mTmplBegin() {
-		input.consume();
-		int c = input.LA(1);
-		if (c == '<') {
-			input.consume();
-			return TMPL_BEGIN;
-		}
-		return 0;
-	}
-
-	private int mTmplEnd() {
-		input.consume();
-		int c = input.LA(1);
-		if (c == '>') {
-			input.consume();
-			return TMPL_END;
-		}
-		return 0;
+		throw new NoViableAltException("mTopLevel", 0, state.type, input);
 	}
 
 	private int mWS(int c) {

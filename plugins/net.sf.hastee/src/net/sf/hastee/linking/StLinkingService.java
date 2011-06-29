@@ -138,8 +138,6 @@ public class StLinkingService extends DefaultLinkingService {
 		final String s = getCrossRefNodeAsString(node);
 		if (requiredType != null && s != null) {
 			if (StPackage.Literals.DECLARATION.isSuperTypeOf(requiredType)) {
-				return getBuiltinFunction(context, s);
-			} else if (StPackage.Literals.ATTRIBUTE.isSuperTypeOf(requiredType)) {
 				return getImplicitAttribute(context, s);
 			}
 		}
