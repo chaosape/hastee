@@ -10,7 +10,7 @@ package net.sf.hastee.ui.editor;
 import java.util.Iterator;
 import java.util.List;
 
-import net.sf.hastee.st.NamedObject;
+import net.sf.hastee.st.TopDeclaration;
 
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.util.EcoreUtil;
@@ -48,6 +48,7 @@ public class STSemanticHighlightingCalculator implements
 		}
 	}
 
+	@Override
 	public void provideHighlightingFor(XtextResource resource,
 			IHighlightedPositionAcceptor acceptor) {
 		if (resource == null)
@@ -55,7 +56,7 @@ public class STSemanticHighlightingCalculator implements
 		Iterator<EObject> iter = EcoreUtil.getAllContents(resource, true);
 		while (iter.hasNext()) {
 			EObject current = iter.next();
-			if (current instanceof NamedObject) {
+			if (current instanceof TopDeclaration) {
 				List<INode> nodes = NodeModelUtils.findNodesForFeature(current,
 						XtextPackage.Literals.ABSTRACT_RULE__NAME);
 				if (!nodes.isEmpty()) {

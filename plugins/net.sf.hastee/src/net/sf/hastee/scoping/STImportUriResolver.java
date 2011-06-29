@@ -24,12 +24,7 @@ public class STImportUriResolver extends ImportUriResolver {
 	public String apply(EObject from) {
 		if (from instanceof Import) {
 			Import importObj = (Import) from;
-			StringBuilder builder = new StringBuilder();
-			for (String token : importObj.getUri().getTokens()) {
-				builder.append(token);
-			}
-
-			String path = builder.toString();
+			String path = importObj.getUri().getContents();
 			return getURI(from.eResource(), path);
 		}
 

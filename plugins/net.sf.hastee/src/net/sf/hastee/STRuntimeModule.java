@@ -9,7 +9,12 @@ import net.sf.hastee.scoping.STImportUriResolver;
 
 import org.eclipse.xtext.linking.ILinkingService;
 import org.eclipse.xtext.naming.IQualifiedNameProvider;
+import org.eclipse.xtext.parser.antlr.Lexer;
+import org.eclipse.xtext.parser.antlr.LexerBindings;
 import org.eclipse.xtext.scoping.impl.ImportUriResolver;
+
+import com.google.inject.Binder;
+import com.google.inject.name.Names;
 
 /**
  * Use this class to register components to be used at runtime / without the
@@ -18,17 +23,24 @@ import org.eclipse.xtext.scoping.impl.ImportUriResolver;
 public class STRuntimeModule extends net.sf.hastee.AbstractSTRuntimeModule {
 
 	@Override
-	public Class<? extends IQualifiedNameProvider> bindIQualifiedNameProvider() {
-		return STNameProvider.class;
+	public Class<? extends ILinkingService> bindILinkingService() {
+		return StLinkingService.class;
 	}
 
 	public Class<? extends ImportUriResolver> bindImportUriResolver() {
 		return STImportUriResolver.class;
 	}
-	
+
 	@Override
-	public Class<? extends ILinkingService> bindILinkingService() {
-		return StLinkingService.class;
+	public Class<? extends IQualifiedNameProvider> bindIQualifiedNameProvider() {
+		return STNameProvider.class;
+	}
+
+	@Override
+	public void configureRuntimeLexer(Binder binder) {
+		binder.bind(Lexer.class)
+				.annotatedWith(Names.named(LexerBindings.RUNTIME))
+				.to(CustomSTLexer.class);
 	}
 
 }

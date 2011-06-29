@@ -3,7 +3,6 @@
  */
 package net.sf.hastee.scoping;
 
-import net.sf.hastee.st.Attribute;
 import net.sf.hastee.st.ExprReference;
 import net.sf.hastee.st.TemplateDef;
 

@@ -1,4 +1,4 @@
-grammar net.sf.hastee.ST hidden(WS, ML_COMMENT, SL_COMMENT)
+grammar net.sf.hastee.ST with org.eclipse.xtext.common.Terminals
 
 import "http://www.eclipse.org/emf/2002/Ecore" as ecore
 generate st "http://www.sf.net/hastee/ST"
@@ -6,86 +6,69 @@ generate st "http://www.sf.net/hastee/ST"
 // entry point
 Group:
 	(imports+=Import)*
-	(members+=NamedObject)*;
+	(members+=TopDeclaration)*;
 
 Import:
 	'import' uri=ExprString;
 
-NamedObject:
-	name=ID
-	((body=TemplateNamed) | (body=Dictionary));
+Declaration: name=ID;
 
-	// top-level elements: TemplateNamed and Dictionary
-TemplateNamed returns TemplateDef:
-	{TemplateDef}
-	'(' ( (arguments += Attribute (',' arguments+=Attribute)* (',' arguments+=AttributeWithDefaultValue)*)
-		| (arguments += AttributeWithDefaultValue (',' arguments+=AttributeWithDefaultValue)*))?
+TopDeclaration:
+	decl = Declaration
+	body = DeclarationBody;
+
+DeclarationBody: TemplateDeclaration | DictionaryDeclaration;
+
+// top-level elements: TemplateNamed and Dictionary
+TemplateDeclaration:
+	'(' ( (attributes += Declaration (',' attributes += Declaration)* (',' defaultAttributes += DefaultAttribute)*)
+		| (defaultAttributes += DefaultAttribute (',' defaultAttributes += DefaultAttribute)*))?
 	')' '::='
-	(('<<' (elements+=ElementNamed)* '>>')
-	| ('"' (elements+=ElementString)* '"'));
+	definition = TemplateDef;
 
-Dictionary:
+DictionaryDeclaration:
 	'::=' '[' pairs+=DictPair (',' pairs+=DictPair)* ']';
 
 DictPair:
-	key=ExprString ':' template=TemplateDef;
+	key=ExprString ':' definition = TemplateDef;
 
 TemplateDef:
-	{TemplateDef}
-	(('<<' (elements+=ElementNamed)* '>>')
-	| ('"' (elements+=ElementString)* '"'));
+	(('<<' template = Template '>>')
+	| ('"' template = Template '"'));
 
 Template:
-	{Template} (elements+=ElementNamed)*;
+	{Template} (elements+=Element)*;
 
-Attribute:
-	_name=ID;
-
-AttributeWithDefaultValue returns Attribute:
-	_name=ID '=' defaultValue = DefaultValue;
+DefaultAttribute:
+	decl = Declaration '=' defaultValue = DefaultValue;
 
 DefaultValue:
 	string=ExprString
 	| bool='true'
 	| bool='false';
 
-	// anonymous template
-TemplateAnonymous returns TemplateDef:
-	{TemplateDef} '{'
-	(arguments += Attribute (',' arguments+=Attribute)* '|')?
-	(elements += ElementAnonymous)*
+// anonymous template
+TemplateAnonymous:
+	'{'
+	(arguments += Declaration (',' arguments += Declaration)* '|')?
+	template = Template
 	'}';
 
-	// elements allowed in named, string, and anonymous templates
-ElementNamed returns Element:
-	ElementCommon | ElementTokenNamed;
-
-ElementTokenNamed returns ElementToken:
-	token=Token | token='|' | token='}' | token='\\}' | token='"';
-
-ElementString returns Element:
-	ElementCommon | ElementTokenString;
-
-ElementTokenString returns ElementToken:
-	token=Token | token='|' | token='}' | token='\\}';
-
-ElementAnonymous returns Element:
-	ElementCommon | ElementTokenAnonymous;
-
-ElementTokenAnonymous returns ElementToken:
-	token=Token | token='\\}' | token='"';
-
-ElementCommon:
+// elements allowed in named, string, and anonymous templates
+Element:
 	Test
 	| ExpressionElement
 	| Comment
-	| Escape;
+	| Escape
+	| TextContents;
+
+TextContents: contents = TEXT;
 
 ExpressionElement:
 	'<' expression=Expression (';' options+=Option (',' options+=Option)*)? '>';
 
 Comment:
-	{Comment} '<' '!' (Token | '|' | '}' | '"')* '!' '>';
+	{Comment} '<' '!' TEXT '!' '>';
 
 Escape:
 	{Escape} '<' ESCAPE_TOKEN '>';
@@ -93,7 +76,7 @@ Escape:
 terminal ESCAPE_TOKEN:
 	'\\' ('n' | 't' | '\\');
 
-	// if/elseif/else/endif test
+// if/elseif/else/endif test
 Test:
 	'<' 'if' '(' c1+=Conditional ')' '>'
 	t1+=Template
@@ -101,7 +84,7 @@ Test:
 	('<' 'else' '>' t3=Template)?
 	'<' 'endif' '>';
 
-	// conditional expressions
+// conditional expressions
 Conditional:
 	AndConditional ({ConditionalBinary.left=current} operator='||' right=AndConditional)*;
 
@@ -123,7 +106,7 @@ Property:
 	_name=ID // name is private
 	| '(' indirect=ExprMap ')';
 
-	// expression
+// expression
 Expression:
 	ExprMap;
 
@@ -150,9 +133,9 @@ ExprInclude:
 	ExprReference
 	| ExprPrimary;
 
-	// call to template
+// call to template
 ExprReference:
-	objRef=[NamedObject] '(' args=ExprTemplateArgs? ')';
+	objRef=[Declaration] '(' args=ExprTemplateArgs? ')';
 
 ExprTemplateArgs:
 	NamedArgs
@@ -162,7 +145,7 @@ NamedArgs:
 	args+=NamedArg (',' args+=NamedArg)*;
 
 NamedArg returns Arg:
-	attribute=[Attribute|ID] '=' value=ExprNoComma;
+	attribute=[Declaration] '=' value=ExprNoComma;
 
 Args:
 	args+=Arg (',' args+=Arg)*;
@@ -170,7 +153,7 @@ Args:
 Arg:
 	value=ExprNoComma;
 
-	// primary expression
+// primary expression
 ExprPrimary:
 	ExprAttribute
 	| ExprString
@@ -179,10 +162,9 @@ ExprPrimary:
 	| ExprIndirect;
 
 ExprAttribute:
-	attribute=[Attribute|ID];
+	attribute=[Declaration];
 
-ExprString:
-	{ExprString} '"' (tokens+=(Token | '|' | '}' | '<<' | '>>'))* '"';
+ExprString: contents = STRING;
 
 ExprTemplateAnonymous:
 	template=TemplateAnonymous;
@@ -193,49 +175,6 @@ ExprIndirect:
 ExprList:
 	'[' values+=ExprNoComma (',' values+=ExprNoComma)* ']';
 
-	// tokens
-Token:
-	'!'
-	| '\\"'
-	| '('
-	| ')'
-	| ','
-	| '.'
-	| ':'
-	| '::'
-	| '::='
-	| ';'
-	| '\\<'
-	| '='
-	| '\\>'
-	| '['
-	| '\\'
-	| ']'
-	| '{'
-	| '||'
-	| '&&'
-	| 'else'
-	| 'elseif'
-	| 'endif'
-	| 'if'
-	| 'true'
-	| 'false'
-	| 'import'
-	| ID
-	| ESCAPE_TOKEN
-	| ANY_OTHER;
-
-terminal ID:
-	('a'..'z' | 'A'..'Z' | '_') ('a'..'z' | 'A'..'Z' | '_' | '0'..'9')*;
-
-terminal ML_COMMENT:
-	'/*'->'*/';
-
-terminal SL_COMMENT:
-	'//' !('\n' | '\r')* ('\r'? '\n')?;
-
-terminal WS:
-	(' ' | '\t' | '\r' | '\n')+;
-
-terminal ANY_OTHER:
-	.;
+// any character that is not anywhere else in the grammar
+// does not matter which one, since this is overriden by our lexer anyway
+terminal TEXT : '`';

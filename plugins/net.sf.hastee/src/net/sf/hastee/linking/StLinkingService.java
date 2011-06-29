@@ -5,9 +5,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import net.sf.hastee.st.Attribute;
+import net.sf.hastee.st.Declaration;
 import net.sf.hastee.st.Group;
-import net.sf.hastee.st.NamedObject;
 import net.sf.hastee.st.StFactory;
 import net.sf.hastee.st.StPackage;
 import net.sf.hastee.st.TemplateDef;
@@ -31,9 +30,9 @@ import org.eclipse.xtext.util.OnChangeEvictingCache;
  */
 public class StLinkingService extends DefaultLinkingService {
 
-	private Map<String, NamedObject> functions;
+	private Map<String, Declaration> functions;
 
-	private Attribute i0;
+	private Declaration i0;
 
 	private Resource stubsResource = null;
 
@@ -41,7 +40,7 @@ public class StLinkingService extends DefaultLinkingService {
 	 * Creates a new ST linking service which creates builtin functions.
 	 */
 	public StLinkingService() {
-		functions = new HashMap<String, NamedObject>();
+		functions = new HashMap<String, Declaration>();
 
 		addFunction("first");
 		addFunction("last");
@@ -50,9 +49,8 @@ public class StLinkingService extends DefaultLinkingService {
 		addFunction("strip");
 		addFunction("length");
 
-		i0 = StFactory.eINSTANCE.createAttribute();
-		i0.set_name("i0");
-
+		i0 = StFactory.eINSTANCE.createDeclaration();
+		i0.setName("i0");
 	}
 
 	/**
@@ -67,8 +65,8 @@ public class StLinkingService extends DefaultLinkingService {
 	 *            return type
 	 */
 	private void addFunction(String name) {
-		NamedObject obj;
-		obj = StFactory.eINSTANCE.createNamedObject();
+		Declaration obj;
+		obj = StFactory.eINSTANCE.createDeclaration();
 		obj.setName(name);
 		functions.put(name, obj);
 	}
@@ -84,7 +82,7 @@ public class StLinkingService extends DefaultLinkingService {
 	 * @return a list
 	 */
 	private List<EObject> getBuiltinFunction(EObject context, String name) {
-		NamedObject function = functions.get(name);
+		Declaration function = functions.get(name);
 		if (function != null) {
 			// Attach the stub to the resource that's being parsed
 			Resource res = makeResource(context.eResource());
@@ -104,16 +102,16 @@ public class StLinkingService extends DefaultLinkingService {
 		Group group = EcoreUtil2.getContainerOfType(template, Group.class);
 		OnChangeEvictingCache.CacheAdapter cache = new OnChangeEvictingCache()
 				.getOrCreate(group.eResource());
-		Map<TemplateDef, Map<String, Attribute>> map = cache
+		Map<TemplateDef, Map<String, Declaration>> map = cache
 				.get("AttributeMap");
 		if (map == null) {
 			map = new ImplicitAttributeSolver().buildAttributeMap(group);
 			cache.set("AttributeMap", map);
 		}
 
-		Map<String, Attribute> implicitAttrs = map.get(template);
+		Map<String, Declaration> implicitAttrs = map.get(template);
 		if (implicitAttrs != null) {
-			Attribute attr = implicitAttrs.get(s);
+			Declaration attr = implicitAttrs.get(s);
 			if (attr != null) {
 				return Collections.singletonList((EObject) attr);
 			}
@@ -139,7 +137,7 @@ public class StLinkingService extends DefaultLinkingService {
 		final EClass requiredType = ref.getEReferenceType();
 		final String s = getCrossRefNodeAsString(node);
 		if (requiredType != null && s != null) {
-			if (StPackage.Literals.NAMED_OBJECT.isSuperTypeOf(requiredType)) {
+			if (StPackage.Literals.DECLARATION.isSuperTypeOf(requiredType)) {
 				return getBuiltinFunction(context, s);
 			} else if (StPackage.Literals.ATTRIBUTE.isSuperTypeOf(requiredType)) {
 				return getImplicitAttribute(context, s);

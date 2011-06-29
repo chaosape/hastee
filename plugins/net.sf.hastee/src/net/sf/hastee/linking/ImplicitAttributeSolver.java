@@ -6,12 +6,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import net.sf.hastee.st.Attribute;
 import net.sf.hastee.st.DictPair;
-import net.sf.hastee.st.Dictionary;
 import net.sf.hastee.st.ExprReference;
 import net.sf.hastee.st.Group;
-import net.sf.hastee.st.NamedObject;
 import net.sf.hastee.st.TemplateDef;
 
 import org.eclipse.xtext.EcoreUtil2;
