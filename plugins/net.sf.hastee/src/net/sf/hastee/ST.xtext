@@ -58,23 +58,12 @@ TemplateAnonymous:
 Element:
 	Test
 	| ExpressionElement
-	| Comment
-	| Escape
 	| TextContents;
 
 TextContents: contents = TEXT;
 
 ExpressionElement:
 	'<' expression=Expression (';' options+=Option (',' options+=Option)*)? '>';
-
-Comment:
-	{Comment} '<' '!' TEXT '!' '>';
-
-Escape:
-	{Escape} '<' ESCAPE_TOKEN '>';
-
-terminal ESCAPE_TOKEN:
-	'\\' ('n' | 't' | '\\');
 
 // if/elseif/else/endif test
 Test:

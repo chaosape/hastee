@@ -10,6 +10,7 @@ import java.util.Stack;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.antlr.runtime.MismatchedTokenException;
 import org.antlr.runtime.NoViableAltException;
 import org.antlr.runtime.RecognitionException;
 import org.antlr.runtime.Token;
@@ -24,7 +25,7 @@ import org.eclipse.xtext.parser.antlr.Lexer;
 public class CustomSTLexer extends Lexer {
 
 	private static enum LexingState {
-		TOP_LEVEL, INSIDE_STRING, INSIDE_BIGSTRING, INSIDE_EXPR
+		GROUP, INSIDE_EXPR, TMPL_BIGSTRING, TMPL_STRING
 	}
 
 	private static final int AND;
@@ -193,7 +194,7 @@ public class CustomSTLexer extends Lexer {
 
 	public CustomSTLexer() {
 		lexingState = new Stack<CustomSTLexer.LexingState>();
-		lexingState.push(LexingState.TOP_LEVEL);
+		lexingState.push(LexingState.GROUP);
 	}
 
 	/** ':' | '::=' */
@@ -253,6 +254,61 @@ public class CustomSTLexer extends Lexer {
 		return SL_COMMENT;
 	}
 
+	private int mExpression() {
+		// TODO Auto-generated method stub
+		return 0;
+	}
+
+	private int mGroup() throws RecognitionException {
+		int c = input.LA(1);
+		if (isWS(c)) {
+			return mWS(c);
+		} else if (isIDStartLetter(c)) {
+			return mIDOrKeyword();
+		} else {
+			switch (c) {
+			case '/':
+				return mComment();
+			case '@':
+				input.consume();
+				return AT;
+			case ':':
+				return mColonOrTmplDef();
+			case ',':
+				input.consume();
+				return COMMA;
+			case '.':
+				input.consume();
+				return DOT;
+			case '=':
+				input.consume();
+				return EQUALS;
+			case '[':
+				input.consume();
+				return LBRACK;
+			case '(':
+				input.consume();
+				return LPAREN;
+			case '"':
+				input.consume();
+				lexingState.push(LexingState.TMPL_BIGSTRING);
+				return QUOTE;
+			case ']':
+				input.consume();
+				return RBRACK;
+			case ')':
+				input.consume();
+				return RPAREN;
+			case '<':
+				return mTmplBegin();
+			case '>':
+				return mTmplEnd();
+			}
+		}
+
+		throw new NoViableAltException("mTopLevel", 0, state.type, input);
+	}
+
 	/** ID : ('a'..'z'|'A'..'Z'|'_'|'/') ('a'..'z'|'A'..'Z'|'0'..'9'|'_'|'/')* ; */
 	private int mIDOrKeyword() {
 		input.consume();
@@ -292,85 +348,99 @@ public class CustomSTLexer extends Lexer {
 		return STRING;
 	}
 
+	private int mTemplate() throws RecognitionException {
+		int c = input.LA(1);
+		if (c == delimiterStartChar) {
+			input.consume();
+			c = input.LA(1);
+			switch (c) {
+			case '!':
+				return mTmplCOMMENT();
+			case '\\':
+				return mTmplESCAPE(); // <\\> <\uFFFF> <\n> etc...
+			default:
+				lexingState.push(LexingState.INSIDE_EXPR);
+				return LDELIM;
+			}
+		}
+
+		throw new NoViableAltException("mTemplate", 0, state.type, input);
+	}
+
+	/** TMPL_BEGIN : '&lt;' '&lt;' */
 	private int mTmplBegin() throws RecognitionException {
 		input.consume();
 		int c = input.LA(1);
 		if (c == '<') {
 			input.consume();
-			lexingState.push(LexingState.INSIDE_BIGSTRING);
+			lexingState.push(LexingState.TMPL_STRING);
 			return TMPL_BEGIN;
 		}
 		throw new NoViableAltException("mTmplBegin", 0, state.type, input);
 	}
 
+	/** COMMENT : '&lt;' '!' .* '!' '&gt;' */
+	private int mTmplCOMMENT() throws RecognitionException {
+		input.consume();
+		int c = input.LA(1);
+		while (!(c == '!' && input.LA(2) == delimiterStopChar)) {
+			if (c == Token.EOF) {
+				RecognitionException re = new MismatchedTokenException(
+						(int) '!', input);
+				re.line = input.getLine();
+				re.charPositionInLine = input.getCharPositionInLine();
+				throw re;
+			}
+			input.consume();
+			c = input.LA(1);
+		}
+
+		// consume '!' '>'
+		input.consume();
+		input.consume();
+
+		// skip token
+		state.token = Token.SKIP_TOKEN;
+		return 0;
+	}
+
+	/** TMPL_END : '&gt;' '&gt;' */
 	private int mTmplEnd() throws RecognitionException {
 		input.consume();
 		int c = input.LA(1);
 		if (c == '>') {
 			input.consume();
+			lexingState.pop();
 			return TMPL_END;
 		}
 		throw new NoViableAltException("mTmplEnd", 0, state.type, input);
 	}
 
+	/** */
+	private int mTmplESCAPE() {
+		// TODO ESCAPE token
+		input.consume();
+		input.consume();
+		return 0;
+	}
+
 	@Override
 	public void mTokens() throws RecognitionException {
 		LexingState topState = lexingState.peek();
-		//switch (topState) {
-		//case TOP_LEVEL:
-			state.type = mTopLevel();
-		//	break;
-		//}
-	}
+		switch (topState) {
+		case GROUP:
+			state.type = mGroup();
+			break;
 
-	private int mTopLevel() throws RecognitionException {
-		int c = input.LA(1);
-		if (isWS(c)) {
-			return mWS(c);
-		} else if (isIDStartLetter(c)) {
-			return mIDOrKeyword();
-		} else {
-			switch (c) {
-			case '/':
-				return mComment();
-			case '@':
-				input.consume();
-				return AT;
-			case ':':
-				return mColonOrTmplDef();
-			case ',':
-				input.consume();
-				return COMMA;
-			case '.':
-				input.consume();
-				return DOT;
-			case '=':
-				input.consume();
-				return EQUALS;
-			case '[':
-				input.consume();
-				return LBRACK;
-			case '(':
-				input.consume();
-				return LPAREN;
-			case '"':
-				input.consume();
-				lexingState.push(LexingState.INSIDE_STRING);
-				return QUOTE;
-			case ']':
-				input.consume();
-				return RBRACK;
-			case ')':
-				input.consume();
-				return RPAREN;
-			case '<':
-				return mTmplBegin();
-			case '>':
-				return mTmplEnd();
-			}
+		case TMPL_STRING:
+		case TMPL_BIGSTRING:
+			state.type = mTemplate();
+			break;
+
+		case INSIDE_EXPR:
+			state.type = mExpression();
+			break;
 		}
-
-		throw new NoViableAltException("mTopLevel", 0, state.type, input);
 	}
 
 	private int mWS(int c) {
