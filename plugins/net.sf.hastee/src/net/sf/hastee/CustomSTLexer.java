@@ -1,3 +1,22 @@
+/*
+ * Copyright (c) 2011, IETR/INSA of Rennes
+ * All rights reserved.
+ * 
+ * This file is part of Hastee.
+ * 
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
 package net.sf.hastee;
 
 import java.io.BufferedReader;
@@ -18,6 +37,14 @@ import org.eclipse.xtext.parser.antlr.Lexer;
 
 /**
  * This class defines a hand-written lexer for ST that allows custom separators.
+ * Some methods are derived from work copyrighted by Terrence Parr.
+ * 
+ * <p>
+ * The idea of this lexer is to combine three different lexers depending on the
+ * context. Three contexts are handled: group (at the highest-level), template
+ * (inside a template definition) and expression (inside an expression). Since
+ * an expression may include a template, we maintain a stack of lexing states.
+ * </p>
  * 
  * @author Matthieu Wipliez
  * 
