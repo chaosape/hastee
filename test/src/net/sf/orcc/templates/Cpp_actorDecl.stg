@@ -8,12 +8,8 @@ listSize(values) ::= <<
 <values : {value | [<value>]} >
 >>
 
-variableDeclaration(variable) ::= <<
-<if (variable.type.dimensionsExpr)
-><variable.type> (*<variable>)<listSize(rest(variable.type.dimensionsExpr)) ><
-else
-><variable.type> <variable><
-endif>
+varDecl(variable) ::= <<
+<variable.type> <variable.indexedName><listSize(variable.type.dimensions)>
 >>
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -21,7 +17,7 @@ endif>
 ///////////////////////////////////////////////////////////////////////////////
 nonConstStateVar(variable) ::= <<
 <if(variable.assignable)>
-<variableDeclaration(variable)>;<\n>
+<varDecl(variable)>;<\n>
 <endif>
 >>
 
@@ -34,7 +30,9 @@ nonConstStateVar(variable) ::= <<
 
 procedure(procedure) ::= <<
 
-<procedure.returnType> <procedure>(<procedure.parameters.list: variableDeclaration(); wrap, anchor, separator=", ">);
+<if(!procedure.native)
+><procedure.returnType> <procedure.name>(<procedure.parameters: varDecl(); wrap, anchor, separator=", ">);<
+endif>
 
 >>
 
@@ -61,16 +59,16 @@ int schedule();
 // Scheduler with FSM
 
 stateScheduler(transition) ::= <<
-bool <transition.sourceState>_state_scheduler();
+bool <transition.sourceState.name>_state_scheduler();
 
 >>
 
-getState(state) ::= <<state_<state> >>
+getState(state) ::= <<state_<state.name> >>
 
 schedulerFSM(actions, fsm) ::= <<
 enum states 
 {
-	state_<first(fsm.states)> = 0,
+	state_<first(fsm.states).name> = 0,
 	<rest(fsm.states) : getState(); separator=",\n">
 };
 
@@ -87,7 +85,7 @@ int schedule();
 >>
 
 constructor(parameters) ::= <<
-<if (actor.parameters.list)>
+<if (actor.parameters)>
 <actor.simpleName>(const char*, <parameters: {input | <input.type>}; separator=", ">, AKA_PROFILING_MODE );
 <else>
 <actor.simpleName>(const char*, AKA_PROFILING_MODE);
@@ -95,7 +93,7 @@ constructor(parameters) ::= <<
 >>
 
 parameters(parameters) ::= <<
-<parameters: {input | <input.type> <input>;}; separator="\n">
+<parameters: {parameter | <parameter.type> <parameter.indexedName>;}; separator="\n">
 
 >>
 
@@ -126,14 +124,14 @@ actor(actor, options) ::= <<
 	// Input FIFOs
 	enum
 	{
-		<actor.inputs.list: {input | <actor.simpleName>_<input.name>,}; separator="\n">
+		<actor.inputs: {input | <actor.simpleName>_<input.name>,}; separator="\n">
 		<actor.simpleName>_nbInputs
 	};
 	////////////////////////////////////////////////////////////////////////////////
 	// Output FIFOs
 	enum
 	{
-		<actor.outputs.list: {input | <actor.simpleName>_<input.name>,}; separator="\n">
+		<actor.outputs: {input | <actor.simpleName>_<input.name>,}; separator="\n">
 		<actor.simpleName>_nbOutputs
 	};
 
@@ -142,13 +140,13 @@ actor(actor, options) ::= <<
 	{
 
 	public:
-		<constructor(actor.parameters.list)>
+		<constructor(actor.parameters)>
 		~<actor.simpleName>();
 	
 		void initializeActor();
 	////////////////////////////////////////////////////////////////////////////////
 	// Functions/procedures
-		<actor.procs.list: procedure()>
+		<actor.procs: procedure()>
 	////////////////////////////////////////////////////////////////////////////////
 	// Actions
 		<actor.actions: action()>
@@ -163,39 +161,27 @@ actor(actor, options) ::= <<
 	<endif>
 	////////////////////////////////////////////////////////////////////////////////
 	// Action scheduler
-<if(actor.actionScheduler.fsm)>
-	<schedulerFSM(actions=actor.actionScheduler.actions, fsm=actor.actionScheduler.fsm)>
+<if(actor.fsm)>
+	<schedulerFSM(actions=actor.actionsOutsideFsm, fsm=actor.fsm)>
 <else>
-	<scheduler(actions=actor.actionScheduler.actions)>
+	<scheduler(actions=actor.actionsOutsideFsm)>
 <endif>
 
 	private:
-<if(actor.inputs.list)>
-	const bool hasTokens(int port, int iSize) const {return  (m_arrAvailStatus[port] \>= iSize);};
+<if(actor.inputs)>
+	const bool hasTokens(int port, int iSize) const {return  (m_avails[port] \>= iSize);};
 <endif>
-<if(actor.outputs.list)>
-	const bool hasRooms(int port, int iSize) const {return  (m_arrRoomStatus[port] \>= iSize);};
+<if(actor.outputs)>
+	const bool hasRooms(int port, int iSize) const {return  (m_rooms[port] \>= iSize);};
 <endif>
-
-	void getFifoStatus();
 
 	private:
 	static const char* className;
 
-	////////////////////////////////////////////////////////////////////////////////
-	// Parameters
-	<parameters(actor.parameters.list)>
-	////////////////////////////////////////////////////////////////////////////////
-	// Non-const state variables of the actor
-	<actor.stateVars.list: nonConstStateVar()>
-	////////////////////////////////////////////////////////////////////////////////
-	// Fifo Status members
-<if(actor.inputs.list)>
-	int m_arrAvailStatus[<actor.simpleName>_nbInputs];
-<endif>
-<if(actor.outputs.list)>
-	int m_arrRoomStatus[<actor.simpleName>_nbOutputs];
-<endif>
+    <parameters(actor.parameters)>
+
+	<actor.stateVars: {var | <varDecl(var)>;}; separator="\n">
+
 	};
 
 <actor.packageAsList: endNamespace()>

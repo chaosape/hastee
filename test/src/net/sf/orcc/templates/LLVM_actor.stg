@@ -1,206 +1,611 @@
-import "net/sf/orcc/templates/LLVM_metadata.stg"
-import "net/sf/orcc/templates/LLVM_header.stg"
+///////////////////////////////////////////////////////////////////////////////
+// METADATA
+///////////////////////////////////////////////////////////////////////////////
+
+decl_MD(actor) ::= <<
+!source = !{<source_decl_MD(actor)>}
+!name = !{<name_decl_MD(actor)>}
+!action_scheduler = !{<actionScheduler_decl_MD(actor)>}
+<if(actor.inputs)>
+!inputs = !{<actor.inputs: {port | <port_decl_MD(actor, port)>}; separator=", ">}
+<endif>
+<if(actor.outputs)>
+!outputs = !{<actor.outputs: {port | <port_decl_MD(actor, port)>}; separator=", ">}
+<endif>
+<if(actor.parameters)>
+!parameters = !{<actor.parameters: {parameter | <var_decl_MD(actor, parameter)>}; separator=", ">}
+<endif>
+<if(actor.stateVars)>
+!state_variables = !{<actor.stateVars: {var | <var_decl_MD(actor, var)>}; separator=", ">}
+<endif>
+<if(actor.procs)> 
+!procedures = !{<actor.procs: {proc | <proc_decl_MD(actor, proc)>}; separator=", ">}
+<endif>
+<if(actor.initializes)>
+!initializes = !{<actor.initializes: {init | <action_decl_MD(actor, init)>}; separator=", ">}
+<endif>
+<if(actor.actions)>
+!actions = !{<actor.actions: {action | <action_decl_MD(actor, action)>}; separator=", ">}
+<endif>
+<if(actor.MoC)>
+!MoC = !{<MoC_decl_MD(actor)>}
+<endif>
+
+<source_MD(actor)>
+<name_MD(actor)>
+
+; Action-scheduler
+<actionScheduler_MD(actor)>
+<if(actor.inputs)>
+; Input ports
+<actor.inputs: {port | <port_MD(actor, port)>}; separator="\n">
+<endif>
+<if(actor.outputs)>
+; Output ports
+<actor.outputs: {port | <port_MD(actor, port)>}; separator="\n">
+<endif>
+<if(actor.parameters)>
+; Parameters
+<actor.parameters: {param | <var_MD(actor, param)>}; separator="\n">
+<endif>
+<if(actor.stateVars)>
+; State Variables
+<actor.stateVars: {var | <statevar_MD(actor, var)>}; separator="\n">
+<endif>
+<if(actor.procs)>
+; Functions and procedures
+<actor.procs: {proc | <proc_MD(actor, proc)>}; separator="\n">
+<endif>
+<if(actor.initializes)>
+; Initializes
+<actor.initializes: {action | <action_MD(actor, action)>}; separator="\n">
+<endif>
+; Actions
+<actor.actions: {action | <action_MD(actor, action)>}; separator="\n">
+; Patterns
+<actor.templateData.patterns.keys: {pattern | <pattern_MD(actor, pattern)>}; separator="\n">
+; Variables of patterns
+<actor.templateData.patterns.keys: {pattern | <pattern_vars_MD(actor, pattern, pattern.portToVarMap)>}; separator="\n">
+; Number of tokens of patterns
+<actor.templateData.patterns.keys: {pattern | <pattern_numTokens_MD(actor, pattern, pattern.numTokensMap)>}; separator="\n">
+<if(actor.MoC)>
+; MoC
+<MoC_MD(actor)>
+<endif>
+
+>>
+
+
+///////////////////////////////////////////////////////////////////////////////
+// Actor MD declaration
+
+source_decl_MD(actor) ::= <<
+!<actor.templateData.names.(actor.file.fullPath)>
+>>
+
+name_decl_MD(actor) ::= <<
+!<actor.templateData.names.(actor.name)>
+>>
+
+actionScheduler_decl_MD(actor) ::= <<
+!<actor.templateData.actionScheduler.(actor)>
+>>
+
+FSM_decl_MD(actor) ::= <<
+!<actor.templateData.actionScheduler.(actor.fsm)>
+>>
+
+var_decl_MD(actor, var) ::= <<
+!<actor.templateData.vars.(var)>
+>>
+
+port_decl_MD(actor, port) ::= <<
+!<actor.templateData.ports.(port)>
+>>
+
+action_decl_MD(actor, action) ::= <<
+!<actor.templateData.actions.(action)>
+>>
+
+proc_decl_MD(actor, proc) ::= <<
+!<actor.templateData.procs.(proc)>
+>>
+
+actions_decl_MD(actor) ::= <<
+!<actor.templateData.actionScheduler.(actor.actionsOutsideFsm)>
+>>
+
+State_decl_MD(actor) ::= <<
+!<actor.templateData.actionScheduler.(actor.fsm.states)>
+>>
+
+Transitions_decl_MD(actor) ::= <<
+!<actor.templateData.actionScheduler.(actor.fsm.transitions)>
+>>
+
+Transition_decl_MD(actor, transition) ::= <<
+!<actor.templateData.actionScheduler.(transition)>
+>>
+
+NextStates_decl_MD(actor, nextStates) ::= <<
+!<actor.templateData.actionScheduler.(nextStates)>
+>>
+
+NextState_decl_MD(actor, nextState) ::= <<
+!<actor.templateData.actionScheduler.(nextState)>
+>>
+
+Sched_decl_MD(actor, action) ::= <<
+!<actor.templateData.actions.(action.scheduler)>
+>>
+
+Body_decl_MD(actor, action) ::= <<
+!<actor.templateData.actions.(action.body)>
+>>
+
+Tag_decl_MD(actor, tag) ::= <<
+!<actor.templateData.actions.(tag)>
+>>
+
+Type_decl_MD(actor, var) ::= <<
+!<actor.templateData.types.(var.type)>
+>>
+
+VarDef_decl_MD(actor, var) ::= <<
+!<actor.templateData.names.(var.name)>
+>>
+
+Initializer_decl_MD(actor, var) ::= <<
+!<actor.templateData.exprs.(var.name)>
+>>
+
+pattern_decl_MD(actor, patterns) ::= <<
+!<actor.templateData.patterns.(patterns)>
+>>
+
+pattern_vars_decl_MD(actor, vars) ::= <<
+!<actor.templateData.varPattern.(vars)>
+>>
+
+pattern_numTokens_decl_MD(actor, numTokens) ::= <<
+!<actor.templateData.numTokenPattern.(numTokens)>
+>>
+
+MoC_decl_MD(actor) ::= <<
+!<actor.templateData.mocs.(actor.MoC)>
+>>
+
+MoC_Invocations_decl_MD(actor, actions) ::= <<
+!<actor.templateData.actionMoC.(actions)>
+>>
+
+MoC_CSDF_decl_MD(actor, csdf) ::= <<
+!<actor.templateData.actionMoC.(csdf)>
+>>
+
+MoC_Configuration_decl_MD(actor, configuration) ::= <<
+!<actor.templateData.configurations.(configuration)>
+>>
+
+
+///////////////////////////////////////////////////////////////////////////////
+// Actor MD body
+
+source_MD(actor) ::= <<
+<source_decl_MD(actor)> = metadata !{<file_MD(actor)>}
+>>
+
+name_MD(actor) ::= <<
+<name_decl_MD(actor)> = metadata !{<varName_MD(actor)>}
+>>
+
+actionScheduler_MD(actor) ::= <<
+<actionScheduler_decl_MD(actor)> = metadata !{<
+if(!actor.actionsOutsideFsm.empty)>metadata <actions_decl_MD(actor)><else>null<endif>, <
+if(actor.fsm)>metadata<FSM_decl_MD(actor)><else>null<endif>}
+<if(!actor.actionsOutsideFsm.empty)>
+;; Actions outside FSM
+<actions_MD(actor)>
+<endif>
+<if(actor.fsm)>
+;; FSM
+<FSM_MD(actor)>
+<endif>
+>>
+
+actions_MD(actor) ::= <<
+<actions_decl_MD(actor)> = metadata !{<actor.actionsOutsideFsm: {action | metadata <action_decl_MD(actor, action)>}; separator=", ">}
+>>
+
+pattern_MD(actor, patterns) ::= <<
+<pattern_decl_MD(actor, patterns)> = metadata !{<
+	if(patterns.numTokensMap)
+	> metadata <pattern_numTokens_decl_MD(actor, patterns.numTokensMap)><
+	else > null <endif>, <
+	if(patterns.variables)
+	> metadata <pattern_vars_decl_MD(actor, patterns.portToVarMap)><
+	else > null <endif>}
+>>
+
+pattern_vars_MD(actor, pattern, portToVarMap) ::= <<
+<if(portToVarMap)>
+<pattern_vars_decl_MD(actor, portToVarMap)> = metadata !{<pattern.ports: {port | metadata <port_decl_MD(actor, port)>}; separator=", ">}
+<endif> 
+>>
+
+pattern_numTokens_MD(actor, pattern, numTokens) ::= <<
+<pattern_numTokens_decl_MD(actor, numTokens)> =  metadata !{<pattern.ports: {port | metadata <port_decl_MD(actor, port)>, i32 <numTokens.(port)>}; separator=", ">}
+>>
+
+action_MD(actor, action) ::= <<
+;; <action.name>
+<action_decl_MD(actor, action)> = metadata !{<
+	if(action.tag.identifiers.empty)
+		> null <
+	else
+		> metadata <Tag_decl_MD(actor, action.tag)
+	><endif
+	>,<if(!action.inputPattern.empty)
+		> metadata <pattern_decl_MD(actor, action.inputPattern)><
+	else
+		> null <
+	endif>,<
+	if(!action.outputPattern.empty)
+		> metadata <pattern_decl_MD(actor, action.outputPattern)><
+	else
+		> null<
+	endif>,<
+	if(!action.peekPattern.empty)
+		> metadata <pattern_decl_MD(actor, action.peekPattern)><
+	else
+		> null<
+	endif
+	>, metadata <Sched_decl_MD(actor, action)
+	>, metadata <Body_decl_MD(actor, action)>}
+<if(!action.tag.identifiers.empty)>
+<Tag_MD(actor, action.tag)>
+<endif>
+<Sched_MD(actor, action)>
+<Body_MD(actor, action)>
+>>
+
+port_MD(actor, port) ::= <<
+<port_decl_MD(actor, port)> = metadata !{metadata <Type_decl_MD(actor, port)>, <varName_MD(port)>, <port.type>** <fifoVarName(port)>}
+<Type_MD(actor, port)>
+>>
+
+proc_MD(actor, proc) ::= <<
+<proc_decl_MD(actor, proc)> = metadata !{<varName_MD(proc)>, <procNative_MD(proc)>, <proc.returnType>(<proc.parameters: argumentTypeDeclaration(); wrap, anchor, separator=", ">)* @<proc.name>}
+>>
+
+var_MD(actor, var) ::= <<
+<var_decl_MD(actor, var)> = metadata !{metadata <VarDef_decl_MD(actor, var)>, metadata <Type_decl_MD(actor, var)>, <var.type>* @<var.name>}
+<VarDef_MD(actor, var)>
+<Type_MD(actor, var)>
+>>
+
+statevar_MD(actor, var) ::= <<
+;; <var.name>
+<var_decl_MD(actor, var)> = metadata !{metadata <VarDef_decl_MD(actor, var)>, metadata <Type_decl_MD(actor, var)>, <if(var.Initialized)
+	>metadata<Initializer_decl_MD(actor, var)><else>null<endif>, <var.type>* @<var.name>}
+<VarDef_MD(actor, var)>
+<Type_MD(actor, var)><
+if(var.Initialized)>
+<Initializer_MD(actor, var)><
+endif>
+>>
+
+Initializer_MD(actor, var) ::= <<
+<Initializer_decl_MD(actor, var)> = metadata !{<var.type> <Constant(var.initialValue, var.type)>}
+>>
+
+FSM_MD(actor) ::= <<
+<FSM_decl_MD(actor)> = metadata !{<varState_MD(actor.fsm.initialState)>, metadata <State_decl_MD(actor)>, metadata <Transitions_decl_MD(actor)>}
+;;; States
+<State_MD(actor)>
+;;; All transitions
+<Transitions_MD(actor)>
+>>
+
+State_MD(actor) ::= <<
+<State_decl_MD(actor)> = metadata !{<actor.fsm.states: varState_MD() ; separator=", ">}
+>>
+
+Transitions_MD(actor) ::= <<
+<Transitions_decl_MD(actor)> = metadata !{<actor.fsm.transitions: {transitions | metadata <Transition_decl_MD(actor, transitions)>}; separator=", ">}
+<actor.fsm.transitions: {transitions | <Transition_MD(actor, transitions)>}; separator="\n">
+>>
+
+Transition_MD(actor, transitions) ::= <<
+;;;; Transitions from <transitions.sourceState.name>
+<if(transitions.list.empty)
+><Transition_decl_MD(actor, transitions)> = metadata !{<varState_MD(transitions.sourceState)>, null}<
+else
+><Transition_decl_MD(actor, transitions)> = metadata !{<varState_MD(transitions.sourceState)>, metadata <NextStates_decl_MD(actor, transitions.list)>}
+<NextStates_MD(actor, transitions.list)><
+endif>
+>>
+
+NextStates_MD(actor, transitionList) ::= <<
+<NextStates_decl_MD(actor, transitionList)> = metadata !{<transitionList: { transition | metadata <NextState_decl_MD(actor, transition)>}; separator=", ">}
+<transitionList: {transition | <NextState_MD(actor, transition)>}; separator="\n">
+>>
+
+NextState_MD(actor, transition) ::= <<
+<NextState_decl_MD(actor, transition)> = metadata !{metadata <action_decl_MD(actor, transition.action)>, <varState_MD(transition.state)>}
+>>
+
+Type_MD(actor, var) ::= <<
+<Type_decl_MD(actor, var)> = metadata  !{<varType_MD(var.type)>, <varSize_MD(var.type)>}
+>>
+
+Sched_MD(actor, action) ::= <<
+<Sched_decl_MD(actor, action)> = metadata  !{<varName_MD(action.scheduler)>, <procNative_MD(action.scheduler)>, i1()* @<action.scheduler.name>}
+>>
+
+Tag_MD(actor, tag)::=<<
+<Tag_decl_MD(actor, tag)> = metadata  !{<tag.identifiers: varIdentifier_MD() ; separator=", ">}
+>>
+
+
+VarDef_MD(actor, var) ::= <<
+<VarDef_decl_MD(actor, var)> = metadata !{<varName_MD(var)>, <varAssignable_MD(var)>, <varSuffix_MD(var)>,  <varIndex_MD(var)>}
+>>
+
+
+Body_MD(actor, action) ::= <<
+<Body_decl_MD(actor, action)> = metadata  !{<varName_MD(action.body)>, <procNative_MD(action.body)>, void()* @<action.body.name>}
+>>
+
+MoC_Invocations_MD(actor, invocations) ::= <<
+<MoC_Invocations_decl_MD(actor, invocations)> = metadata !{<invocations: {invocation | metadata <action_decl_MD(actor, invocation.action)>}; separator=", ">} 
+>>
+
+MoC_CSDF_MD(actor, csdf) ::= <<
+<MoC_CSDF_decl_MD(actor, csdf)> = metadata !{i32 <csdf.numberOfPhases> ,<
+		if(!csdf.inputPattern.empty)
+			> metadata <pattern_decl_MD(actor, csdf.inputPattern)><
+		else
+			> null <
+		endif>,<
+		if(!csdf.outputPattern.empty)
+			> metadata <pattern_decl_MD(actor, csdf.outputPattern)><
+		else
+			> null <
+		endif
+			>, metadata <MoC_Invocations_decl_MD(actor, csdf.invocations)>}
+			
+<MoC_Invocations_MD(actor, csdf.invocations)>
+>>
+
+MoC_Configuration_MD(actor, configuration) ::= <<
+<MoC_Configuration_decl_MD(actor, configuration)> = metadata !{metadata <action_decl_MD(actor, configuration)>, metadata <MoC_CSDF_decl_MD(actor, actor.MoC.configurations.(configuration))>}
+	
+<MoC_CSDF_MD(actor=actor, csdf=actor.MoC.configurations.(configuration))>
+>>
+
+
+///////////////////////////////////////////////////////////////////////////////
+// MoC MD data
+
+MoC_MD(actor)::= <<
+<MoC_decl_MD(actor=actor)> = metadata !{<MoCName_MD(actor.MoC)> <
+	if(actor.MoC.CSDF)
+		> , metadata <MoC_CSDF_decl_MD(actor, actor.MoC)> <
+	elseif(actor.MoC.quasiStatic)
+		>, <actor.MoC.configurations.keys: {configuration | metadata <MoC_Configuration_decl_MD(actor, configuration)>}; separator=", "
+	><endif>
+}
+
+<if(actor.MoC.CSDF)>
+<MoC_CSDF_MD(actor, actor.MoC)>
+<elseif(actor.MoC.quasiStatic)>
+<actor.MoC.configurations.keys: {configuration | <MoC_Configuration_MD(actor, configuration)>}>
+<endif>
+>>
+
+MoCName_MD(MoC)::= <<
+metadata !<
+if(MoC.quasiStatic)> "QuasiStatic"<
+endif><
+if(MoC.CSDF)><
+	if(MoC.SDF)>"SDF"<
+	else>"CSDF"<
+	endif><
+endif><
+if(MoC.DPN)>"DPN"<
+endif><
+if(MoC.KPN)>"KPN"<
+endif>
+>>
+
+
+///////////////////////////////////////////////////////////////////////////////
+// Actor MD data
+
+varType_MD(type) ::= <<
+<if(type.int)> i32 <type.size> <
+elseif(type.uint)> i32 <type.size> <
+elseif(type.bool)> i32 1 < 
+elseif(type.list)><varType_MD(type.elementType)><
+elseif(type.string)> i32 8 <
+endif>
+>>
+
+varAssignable_MD(var) ::= <<
+i1 <if(var.assignable)>1<else>0<endif>
+>>
+
+varSuffix_MD(var) ::= <<
+i32 <if(var.suffix)><var.suffix><else>0<endif>
+>>
+
+varIndex_MD(var) ::= <<
+i32 <if(var.index)><var.index><else>0<endif>
+>>
+
+procNative_MD(proc) ::= <<
+<if(proc.native)>i1 1<else>i1 0<endif>
+>>
+
+procRetType_MD(proc) ::= <<
+metadata !"<proc.returnType>"
+>>
+
+varSize_MD(type) ::= <<
+<if(type.list)> <type.dimensions: {dim | i32 <dim>}; separator=", "> <
+else> null <endif>
+>>
+
+varName_MD(var) ::= <<
+metadata !"<var.name>"
+>>
+
+file_MD(actor) ::= <<
+metadata !"<actor.file.fullPath>"
+>>
+
+varState_MD(state) ::= <<
+metadata !"<state.name>"
+>>
+
+varIdentifier_MD(identifier) ::= <<
+metadata !"<identifier>"
+>>
+
+
+///////////////////////////////////////////////////////////////////////////////
+// Local variables
+///////////////////////////////////////////////////////////////////////////////
+
+variableDeclaration(variable) ::= <<
+<if(variable.type.list && !actor.templateData.castedListReferences.(variable))>
+%<variable.indexedName> = alloca <variable.type>
+<endif>
+>>
+
+
+///////////////////////////////////////////////////////////////////////////////
+// FIFO declaration
+///////////////////////////////////////////////////////////////////////////////
+
+fifoVar(port, var) ::= <<
+%<var.name>_ptr = load <port.type>** <fifoVarName(port)>
+%<var.name> = bitcast <port.type>* %<var.name>_ptr to <var.type>*
+>>
+
+fifoVarName(port) ::= <<
+@<port.name>_ptr
+>>
+
+fifo(port) ::= <<
+<fifoVarName(port)> = global <port.type>* null
+>>
+
+
+///////////////////////////////////////////////////////////////////////////////
+// Constants
+///////////////////////////////////////////////////////////////////////////////
+
+Constant(constant, type) ::= <<
+<if (constant.booleanExpr)><printBool(constant)><
+elseif(constant.intExpr)><printInt(constant)><
+elseif(constant.listExpr)><printList(constant, type)><
+elseif(constant.stringExpr)><printString(constant)><
+endif>
+>>
+
+printBool(constant) ::= <<
+<if(constant.value)>1<else>0<endif>
+>>
+
+printInt(constant) ::= <<
+<constant>
+>>
+
+// the values of a list: {val1, val2, ..., valn}
+printList(constant, type) ::= <<
+[<constant.value: { elementValue |<type.type> <Constant(elementValue, type.type)>}; wrap, separator=", ">]
+>>
+
+printString(constant) ::= <<
+c"<constant>"
+>>
+
+
+///////////////////////////////////////////////////////////////////////////////
+// Argument type declaration
+///////////////////////////////////////////////////////////////////////////////
+
+argumentTypeDeclaration(variable) ::= <<
+<variable.type><if(variable.type.list)>*<endif>
+>>
+
 
 ///////////////////////////////////////////////////////////////////////////////
 // Types and variables
 ///////////////////////////////////////////////////////////////////////////////
+
 Var(var) ::= <<
-<if(var.global)>@<else>%<endif><var>
+<if(var.global)>@<else>%<endif><var.indexedName>
 >>
 
-Expr(expr, type) ::= <<
-<if(expr.varExpr)><Var(expr.var.variable)><else><ConstantValue(const=expr, type=type)><endif>
->>
-
-ExprType(expr) ::= <<
-<expr.type>
->>
-
-VarType(var) ::= <<
-<var.type>
->>
-
-ListType(list) ::= <<
-<list.type.elementType>
->>
-
-variableDeclaration(variable) ::= <<
-<if(!variable.port)
-><if(variable.type.list)
-><if(variable.instruction.store || !variable.instruction)>
-<AllocaOp(result={%<variable>}, type=variable.type)>
-<endif>
-<endif><
-endif>
+Expr(expr) ::= <<
+<if(expr.varExpr)><Var(expr.use.variable)><else><Constant(expr, expr.type)><endif>
 >>
 
 indexes(indexes) ::= <<
-<indexes: { index | <if(index.type)><index.type><else>i32<endif> <Expr(expr=index, type=index.type)> }; separator=", ">
+<indexes: { index | <if(index.type)><index.type><else>i32<endif> <Expr(index)> }; separator=", ">
 >>
 
 indexesName(indexes) ::= <<
 <indexes: {index |<index>}; separator="_">
 >>
 
-parametersDeclaration(arguments, parameters, casts, location) ::= <<
-<arguments, parameters, casts: { arg, param, cast | <parameters(type = arg.type, variable= param, cast =cast, location=location)>}; separator=", ">
+parameters(arguments, parameters) ::= <<
+<arguments, parameters: { arg, param | <parameter(arg.type, param)>}; separator=", ">
 >>
 
-parameters(type, variable, cast, location) ::= <<
-<if(variable.intExpr)><type> <elseif(type.list)><type>* <elseif(variable.booleanExpr)>i1 <else><variable.type> <endif><if(cast)>%<variable><location>_cast<else><Expr(expr=variable, type=variable.type)><endif>
+parameter(type, expr) ::= <<
+<type><if(type.list)>*<endif> <Expr(expr)>
 >>
 
 argumentDeclaration(variable) ::= <<
-<if(variable.type.list)
-><variable.type>* %<variable><
-else
-><variable.type> %<variable><
-endif>
+<variable.type><if(variable.type.list)>*<endif> %<variable.name>
 >>
 
-Location(location) ::= <<
-<location.startLine><location.startColumn><location.endColumn>
->>
-
-// phi definition
-phiPair(value, label) ::= <<
-[<value>, %<label>]
->>
 
 ///////////////////////////////////////////////////////////////////////////////
 // State variables
 ///////////////////////////////////////////////////////////////////////////////
+
 stateVar(variable) ::= <<
-@<variable> = <if(variable.assignable)> global <
-else> constant <endif> <variable.type> <
-if(variable.initialValue)> <ConstantValue(type=variable.type, const=variable.initialValue)> 
-<else> zeroinitializer, align 32 
-<endif>
-
+@<variable.name> = <printStateVarNature(variable)> <variable.type> <initializeStateVar(variable)>
 >>
 
-
-///////////////////////////////////////////////////////////////////////////////
-// LLVM Operations
-///////////////////////////////////////////////////////////////////////////////
-LoadOp(ty, pointer) ::= <<
-load <ty>* <pointer>
+printStateVarNature(variable) ::= <<
+<if(variable.assignable)>global<else>constant<endif>
 >>
 
-AndOp(result, ty, op1, op2) ::= <<
-<result> = and <ty> <op1>, <op2>
+initializeStateVar(variable) ::= <<
+<if(variable.initialValue)><Constant(variable.initialValue, variable.type)><else>zeroinitializer, align 32<endif>
 >>
 
-IcmpOp(result, cond, ty, op1, op2) ::= <<
-<result> = icmp <cond> <ty> <op1>, <op2>
->>
- 
-GetElementPtrOp(pty, ptrval, idx0, idx) ::= <<
-getelementptr <pty>* <ptrval><if(idx0)>, i32 <idx0><endif> <if(idx)>, <indexes(idx)><endif>
->>
-
-BitcastOp(result, ty, value, ty2) ::= <<
-<result> = bitcast <ty> <value> to <ty2>
->>
-
-AllocaOp(result, type) ::= <<
-<result> = alloca <type>
->>
-
-BrOp(cond, iftrue, iffalse, dest) ::= <<
-<if(cond)
->br i1 <cond>, label <iftrue>, label <iffalse><
-else
->br label <dest><
-endif>
->>
-
-RetOp(type, value) ::= <<
-<if(value)
->ret <type> <value><
-else
->ret void<
-endif>
->>
-
-CallOp(ty, fnptrval, function_args) ::= <<
-call <ty> @<fnptrval> (<function_args>)
->>
 
 ///////////////////////////////////////////////////////////////////////////////
 // Instructions
 ///////////////////////////////////////////////////////////////////////////////
 
-StoreInstr(ty, value, pty, ptr) ::= <<
-<if(value.intExpr || value.booleanExpr)
->store <pty> <value>, <pty>* <ptr><
-else
->store <ty> <Expr(expr=value, type=ty)>, <pty>* <ptr><
-endif>
->>
-
 PrintInstr(parameters) ::= <<
 call i32 (i8*, ...)* @printf(<parameters: PrintParameter(); separator=", ">)
-
 >>
 
 PrintParameter(parameter) ::= <<
 <if (parameter.type.string)
 > i8* noalias getelementptr inbounds (<parameter.type>* @<parameter>, i64 0, i64 0) <
 else
-><parameter.type> <Expr(expr=parameter, type=parameter.type)><
+><parameter.type> <Expr(parameter)><
 endif>
-
->>
-
-///////////////////////////////////////////////////////////////////////////////
-// Conversion instructions
-///////////////////////////////////////////////////////////////////////////////
-
-CastParameter(casts, args, params, location )::= <<
-<casts, args, params: { cast, arg, param | <if(cast)> 
-<BitcastOp(result={%<param><location>_cast}, ty={<param.type>*}, value=Expr(expr=param, type=param.type), ty2={<arg.type>*})>
-<endif>}>
->>
-
-IfWithThenElseNodes(ifNode) ::= <<
-	<BrOp(cond=Expr(expr=ifNode.value, type=ifNode.value.type), iftrue={%b<label(ifNode.thenNodes)>}, iffalse={%b<label(ifNode.elseNodes)>}, dest="")>
-
-b<label(ifNode.thenNodes)>: 
-<Nodes_cond(first(ifNode.thenNodes))> <Nodes(rest(ifNode.thenNodes))>
-	br label %b<label(ifNode.joinNode)>
-
-b<label(ifNode.elseNodes)>:
-<Nodes_cond(first(ifNode.elseNodes))> <Nodes(rest(ifNode.elseNodes))>
-	br label %b<label(ifNode.joinNode)>
-
-b<label(ifNode.joinNode)>:
-
->>
-
-IfWithThenNode(ifNode) ::= <<
-	<BrOp(cond=Expr(expr=ifNode.value, type=ifNode.value.type), iftrue={%b<label(ifNode.thenNodes)>}, iffalse={%b<label(ifNode.joinNode)>}, dest="")>
-
-b<label(ifNode.thenNodes)>: 
-<Nodes_cond(first(ifNode.thenNodes))> <Nodes(rest(ifNode.thenNodes))>
-	br label %b<label(ifNode.joinNode)>
-
-b<label(ifNode.joinNode)>:
-
->>
-
-LoadLocalPort(instr) ::= <<
-%local_<instr.port><instr.block.label> = <LoadOp(ty=fifoName(instr.port), pointer={@<instr.port>})>
->>
-
-label(nodes) ::= "b<first(nodes):{ x | <x.label>}>"
-
-phiPairs(phi) ::= <<
-<phiExpr(expr=first(phi.values), type=phi.target.type , node = first(phi.block.predecessors))>, <phiExpr(expr=first(rest(phi.values)), type=phi.target.type, node = rest(phi.block.predecessors))>
->>
-
-phiExpr(expr, type, node) ::= <<
-[<Expr(expr=expr, type=type)> , %b<label(node)> ]
 >>
 
 
@@ -208,242 +613,204 @@ phiExpr(expr, type, node) ::= <<
 // ORCC IR Instructions
 ///////////////////////////////////////////////////////////////////////////////
 
-
-Call(call) ::= <<
-<if(call.print)> 
-<PrintInstr(call.parameters)> 
-<else>
-<CastParameter(casts=call.paramCast, args=call.procedure.parameters.list, params=call.parameters, location=Location(call.location))>
-<if(call.target)>
-%<call.target> = <CallOp(ty=call.procedure.returnType,
-fnptrval=call.procedure,
-function_args=parametersDeclaration(arguments=call.procedure.parameters.list, parameters=call.parameters, casts=call.paramCast, location=Location(call.location)))>
-<else>
-<CallOp(ty=call.procedure.returnType, fnptrval=call.procedure, function_args=parametersDeclaration(arguments=call.procedure.parameters.list ,parameters=call.parameters, casts=call.paramCast, location=Location(call.location)))>
-<endif>
-<endif>
+printInstructions(instructions) ::= <<
+<instructions: printInstruction(); separator="\n">
 >>
 
-Cast(target, value, cast)::= <<
-<if(cast.extended)>
-<if(cast.signed)
->%<target> = sext <value.type> %<value> to <target.type><
-else
->%<target> = zext <value.type> %<value> to <target.type><
-endif>
-<else>
-%<target> = trunc <value.type> %<value> to <target.type>
-<endif>
->>
-
-Assign(assign) ::= <<
-<if(assign.cast)>
-<Cast(target = assign.target, value = assign.value, cast = assign.cast)>
-<else> 
-%<assign.target> = <assign.value>
-<endif>
->>
-
-PhiAssignment(phi) ::= <<
-
-%<phi.target> = phi <phi.target.type> <phiPairs(phi)>
->>
-
-Read(read) ::= <<
-
-<LoadLocalPort(read)>
-%<read.port>_ptr = <CallOp(ty ={<read.port.type>*}, fnptrval={fifo_<fifoType(read.port)>_read}, function_args={<fifoName(read.port)> %local_<read.target><read.block.label>, i32 <read.numTokens>})>
-<BitcastOp(result=Var(read.target) , ty={<read.port.type>*}, value={%<read.port>_ptr}, ty2={<VarType(read.target)>*})>
-
->>
-
-
-Peek(peek) ::= <<
-
-<LoadLocalPort(peek)>
-%<peek.port>_ptr = <CallOp(ty ={<peek.port.type>*}, fnptrval={fifo_<fifoType(peek.port)>_peek}, function_args={<fifoName(peek.port)> %local_<peek.target><peek.block.label>, i32 <peek.numTokens>})>
-<BitcastOp(result=Var(peek.target) , ty={<peek.port.type>*}, value={%<peek.port>_ptr}, ty2={<VarType(peek.target)>*})>
-
->>
-
-Write(write) ::= <<
-
-<LoadLocalPort(write)>
-%<write.port>_ptr = <CallOp(ty ={<write.port.type>*}, fnptrval={fifo_<fifoType(write.port)>_write}, function_args={<fifoName(write.port)> %local_<write.target><write.block.label>, i32 <write.numTokens>})>
-<BitcastOp(result=Var(write.target) , ty={<write.port.type>*}, value={%<write.port>_ptr}, ty2={<VarType(write.target)>*})>
-
->>
-
-HasRoom(result, action, port, numToken) ::= <<
-
-%<port>_<action> = <LoadOp(ty=fifoName(port), pointer={@<port>})>
-%<result>32 = <CallOp(ty="i32", fnptrval={fifo_<fifoType(port)>_has_room}, function_args={<fifoName(port)> %<port>_<action>, i32 <numToken>})>
-%<result> = trunc i32 %<result>32 to i1
->>
-
-HasTokens(hasTokens) ::= <<
-
-<LoadLocalPort(hasTokens)>
-%<hasTokens.target>32 = <CallOp(ty="i32", fnptrval={fifo_<fifoType(hasTokens.port)>_has_tokens}, function_args={<fifoName(hasTokens.port)> %local_<hasTokens.port><hasTokens.block.label>, i32 <hasTokens.numTokens>})>
-%<hasTokens.target> = trunc i32 %<hasTokens.target>32 to i1
->>
-
-WriteEnd(writeEnd) ::= <<
-
-%end_<writeEnd.port> = <LoadOp(ty=fifoName(writeEnd.port), pointer={@<writeEnd.port>})>
-<CallOp(ty ="void", fnptrval={fifo_<fifoType(writeEnd.port)>_write_end}, function_args={<fifoName(writeEnd.port)> %end_<writeEnd.port>, i32 <writeEnd.numTokens>})>
->>
-
-
-ReadEnd(readEnd) ::= <<
-
-%end_<readEnd.port> = <LoadOp(ty=fifoName(readEnd.port), pointer={@<readEnd.port>})>
-<CallOp(ty ="void", fnptrval={fifo_<fifoType(readEnd.port)>_read_end}, function_args={<fifoName(readEnd.port)> %end_<readEnd.port>, i32 <readEnd.numTokens>})>
->>
-
-Return(return) ::= <<
-
-<if(return.value)><
-RetOp(type=return.value.type, value=Expr(expr=return.value, type=return.value.type))><
-else
-><RetOp(type="void", value="")><
+printInstruction(inst) ::= <<
+<if(inst.assign)><printAssign(inst)><
+elseif(inst.gep)><printGEP(inst)><
+elseif(inst.phi)><printPhiAssignment(inst)><
+elseif(inst.call)><printCall(inst)><
+elseif(inst.load)><printLoad(inst)><
+elseif(inst.return)><printReturn(inst)><
+elseif(inst.store)><printStore(inst)><
+elseif(inst.instCast)><printCast(inst)><
 endif>
 >>
 
-Store(store) ::= <<
-
-<StoreInstr(ty=store.value.type, value=store.value, pty=VarType(store.target), ptr=Var(store.target))>
-
+printCall(call) ::= <<
+<if(call.print)
+><PrintInstr(call.parameters)><
+else
+><if(call.target)
+>%<call.target.variable.indexedName> = <
+endif
+>call <call.procedure.returnType> @<call.procedure.name> (<parameters(call.procedure.parameters, call.parameters)>)<
+endif>
 >>
 
-Load(load) ::= <<
-<Var(load.target)> = <LoadOp(ty=VarType(load.source.variable), pointer=Var(load.source.variable))>
-
+printCast(cast)::= <<
+%<cast.target.variable.indexedName> = <printCastOp(cast)> <printCastType(cast.source.variable)> <Var(cast.source.variable)> to <printCastType(cast.target.variable)>
 >>
 
-GEP(gep) ::= <<
-<Var(gep.target)> = <GetElementPtrOp(idx0="0",  pty=VarType(gep.source.variable), ptrval=Var(gep.source.variable), idx=gep.indexes)>
-
+printCastOp(cast) ::= <<
+<if(cast.source.variable.type.list)>bitcast<else><if(cast.extended)><if(cast.signed)>sext<else>zext<endif><else>trunc<endif><endif>
 >>
 
-///////////////////////////////////////////////////////////////////////////////
-// ORCC IR Nodes
-///////////////////////////////////////////////////////////////////////////////
-
-// if node
-IfNode(ifNode) ::= <<
-<if(ifNode.thenNodes)>
-<if(ifNode.elseNodes)>
-<IfWithThenElseNodes(ifNode)>
-<else>
-<IfWithThenNode(ifNode)>	
-<endif>
-<endif>
-<Nodes_cond(first(ifNode.joinNode))>
-<Nodes(rest(ifNode.joinNode))>
-
+printCastType(var) ::= <<
+<var.type><if(var.type.list)>*<endif>
 >>
 
-// while node
-WhileNode(whileNode) ::= <<
-<BlockNode(whileNode.joinNode)>
-	<BrOp(cond=Expr(expr=whileNode.value, type=whileNode.value.type), iftrue={%b<label(whileNode.Nodes)>}, iffalse={%b<label(whileNode.joinNode.successors)>}, dest="")>
-
-b<label(whileNode.nodes)>:
-<Nodes_cond(first(whileNode.nodes))>
-<Nodes(rest(whileNode.nodes))>
-	br label %b<label(whileNode.joinNode)>
-
-b<label(whileNode.joinNode.successors)>:
-
+printAssign(assign) ::= <<
+%<assign.target.variable.indexedName> = <assign.value>
 >>
+
+printPhiAssignment(phi) ::= <<
+<Var(phi.target.variable)> = phi <phi.target.variable.type> <printPhiPairs(phi)>
+>>
+
+printPhiPairs(phi) ::= <<
+<printPhiExpr(first(phi.values), phi.target.variable.type, first(phi.block.predecessors))>, <printPhiExpr(first(rest(phi.values)), phi.target.variable.type, first(rest(phi.block.predecessors)))>
+>>
+
+printPhiExpr(expr, type, node) ::= <<
+[<Expr(expr)>, %b<label(node)>]
+>>
+
+printReturn(return) ::= <<
+<if(printReturn)
+><if(return.value)
+>ret <return.value.type> <Expr(return.value)><
+else
+>ret void<
+endif><
+endif>
+>>
+
+printStore(store) ::= <<
+<if(store.value.intExpr || store.value.booleanExpr)
+>store <store.target.variable.type> <store.value>, <store.target.variable.type>* <Var(store.target.variable)><
+else
+>store <store.value.type> <Expr(store.value)>, <store.target.variable.type>* <Var(store.target.variable)><
+endif>
+>>
+
+printLoad(load) ::= <<
+<Var(load.target.variable)> = load <load.source.variable.type>* <Var(load.source.variable)>
+>>
+
+printGEP(gep) ::= <<
+<Var(gep.target.variable)> = getelementptr <gep.source.variable.type>* <Var(gep.source.variable)>, i32 0 <if(gep.indexes)>, <indexes(gep.indexes)><endif>
+>>
+
 
 ///////////////////////////////////////////////////////////////////////////////
 // Nodes
 ///////////////////////////////////////////////////////////////////////////////
 
-Instruction(instruction) ::= <<
-<(instruction.class.simpleName)(instruction)>
+printNodes(nodes, printReturn=true) ::= <<
+<nodes:printNode()>
 >>
 
-Instructions(instructions) ::= <<
-<instructions: Instruction()>
+printNode(node) ::= <<
+<if(node.blockNode)><printBlockNode(node)><
+elseif(node.ifNode)><printIfNode(node)><
+elseif(node.whileNode)><printWhileNode(node)><
+endif>
 >>
 
-Node(node) ::= <<
-<(node.class.simpleName)(node)>
+printFirstNode(node) ::= <<
+<if(node.blockNode)
+><printFirstBlockNode(node)><
+else
+>printNode(node)<
+endif>
 >>
 
-Nodes(nodes) ::= <<
-<nodes: Node()>
->>
-
-Node_cond(node) ::= <<
-<({<node.class.simpleName>_cond})(node)>
->>
-
-Nodes_cond(nodes) ::= <<
-<nodes: Node_cond()>
->>
-
-WhileNode_cond(nodes) ::= <<
-<WhileNode(nodes)>
->>
-
-IfNode_cond(nodes) ::= <<
-<IfNode(nodes)>
->>
-
-BlockNode_cond(blockNode) ::= <<
-	<Instructions(blockNode.instructions)> 
->>
-
-// if node
-BlockNode(blockNode) ::= <<
+printBlockNode(blockNode) ::= <<
 	br label %b<label(blockNode)>
 
 b<label(blockNode)>:
-	<Instructions(blockNode.instructions)>
+	<printInstructions(blockNode.instructions)>
 	
 >>
+
+printFirstBlockNode(blockNode) ::= <<
+	<printInstructions(blockNode.instructions)> 
+>>
+
+printIfNode(ifNode) ::= <<
+	br i1 <Expr(ifNode.condition)>, label %b<label(first(ifNode.thenNodes))>, label %b<if(ifNode.elseNodes)><label(first(ifNode.elseNodes))><else><label(ifNode.joinNode)><endif>
+
+b<label(first(ifNode.thenNodes))>: 
+<printFirstNode(first(ifNode.thenNodes))> <printNodes(rest(ifNode.thenNodes))>
+	br label %b<label(ifNode.joinNode)>
+
+<if(ifNode.elseNodes)>
+b<label(first(ifNode.elseNodes))>:
+<printFirstNode(first(ifNode.elseNodes))> <printNodes(rest(ifNode.elseNodes))>
+	br label %b<label(ifNode.joinNode)>
+<endif>
+
+b<label(ifNode.joinNode)>:
+<printFirstNode(first(ifNode.joinNode))>
+<printNodes(rest(ifNode.joinNode))>
+>>
+
+printWhileNode(whileNode) ::= <<
+<printBlockNode(whileNode.joinNode)>
+	br i1 <Expr(whileNode.condition)>, label %b<label(first(whileNode.Nodes))>, label %b<label(first(whileNode.joinNode.successors))>
+
+b<label(first(whileNode.nodes))>:
+<printFirstNode(first(whileNode.nodes))>
+<printNodes(rest(whileNode.nodes))>
+	br label %b<label(whileNode.joinNode)>
+
+b<label(first(whileNode.joinNode.successors))>:
+>>
+
+label(node) ::= "b<actor.templateData.nodeToLabelMap.(node)>"
+
 
 ///////////////////////////////////////////////////////////////////////////////
 // Procedure
 ///////////////////////////////////////////////////////////////////////////////
 
 procedure(procedure) ::= <<
-<if(!procedure.native)>
-define <procedure.returnType> @<procedure>(<procedure.parameters.list: argumentDeclaration(); wrap, anchor, separator=", ">) nounwind {
+<if(procedure.native)>
+declare <procedure.returnType> @<procedure.name>(<procedure.parameters: argumentDeclaration(); wrap, anchor, separator=", ">) nounwind
+<else>
+define <procedure.returnType> @<procedure.name>(<procedure.parameters: argumentDeclaration(); wrap, anchor, separator=", ">) nounwind {
 entry:
-<if(procedure.locals.list)>
-	<procedure.locals.list: variableDeclaration()>
+<if(procedure.locals)>
+	<procedure.locals: variableDeclaration()>
 <endif>
-<Nodes(trunc(procedure.nodes))>
-<Node(last(procedure.nodes))>
+<printNodes(procedure.nodes)>
 }
 <endif>
 >>
 
-///////////////////////////////////////////////////////////////////////////////
-// Parameters
-///////////////////////////////////////////////////////////////////////////////
-
-actorParameter(parameter) ::= <<
-@<parameter> = global <parameter.type> undef
-
->>
 
 ///////////////////////////////////////////////////////////////////////////////
 // Action
 ///////////////////////////////////////////////////////////////////////////////
 
-action(action) ::= <<
-<procedure(action.body)><procedure(action.scheduler)>
+printAction(action) ::= <<
+define <action.scheduler.returnType> @<action.scheduler.name>(<action.scheduler.parameters: argumentDeclaration(); wrap, anchor, separator=", ">) nounwind {
+entry:
+	<action.scheduler.locals: variableDeclaration()>
+	<action.peekPattern.ports: { port | <fifoVar(port, action.inputPattern.portToVarMap.(port))>}; separator="\n">
+<printNodes(action.scheduler.nodes)>
+}
+
+define void @<action.body.name>(<action.body.parameters: argumentDeclaration(); wrap, anchor, separator=", ">) nounwind {
+entry:
+	<action.body.locals: variableDeclaration()>
+	<action.inputPattern.ports: { port | <fifoVar(port, action.inputPattern.portToVarMap.(port))>}; separator="\n">
+	<action.outputPattern.ports: { port | <fifoVar(port, action.outputPattern.portToVarMap.(port))>}; separator="\n">
+<printNodes(action.body.nodes)>
+}
 >>
+
 
 ///////////////////////////////////////////////////////////////////////////////
 // Actor
 ///////////////////////////////////////////////////////////////////////////////
+
+actorParameter(parameter) ::= <<
+@<parameter.name> = global <parameter.type> undef
+>>
 
 actor(actor, options) ::= <<
 
@@ -451,32 +818,46 @@ actor(actor, options) ::= <<
 ; Generated from "<actor.name>"
 declare i32 @printf(i8* noalias , ...) nounwind 
 
+<if(actor.inputs)>
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Input FIFOs
-<actor.inputs.list: fifo()>
+<actor.inputs: fifo(); separator="\n">
+<endif>
+
+<if(actor.outputs)>
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Output FIFOs
-<actor.outputs.list: fifo()>
+<actor.outputs: fifo(); separator="\n">
+<endif>
+
+<if(actor.parameters)>
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Parameter values of the instance
-<actor.parameters.list: actorParameter()>
+<actor.parameters: actorParameter(); separator="\n">
+<endif>
+
+<if(actor.stateVars)>
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; State variables of the actor
-<actor.stateVars.list: stateVar()>
+<actor.stateVars: stateVar(); separator="\n">
+<endif>
 
+<if(actor.procs)>
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Functions/procedures
-<actor.procs.list: procedure()>
+<actor.procs: {proc | <procedure(proc)>}>
+<endif>
+
+<if(actor.initializes)>
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Initializes
+<actor.initializes: printAction(); separator="\n\n">
+<endif>
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Actions
-<actor.actions: action()>
-
-; Initializes
-<if(actor.initializes)>
-<actor.initializes: action()>
-<endif>
+<actor.actions: printAction(); separator="\n\n">
 
 <decl_MD(actor)>
 
-<header()> 
 >>
