@@ -7,18 +7,12 @@
  *******************************************************************************/
 package net.sf.hastee.ui.editor;
 
-import java.util.Iterator;
-import java.util.List;
-
+import static net.sf.hastee.ui.editor.STHighlightingConfiguration.TEMPLATE_NAME;
+import static org.eclipse.xtext.nodemodel.util.NodeModelUtils.findActualNodeFor;
 import net.sf.hastee.st.TopDeclaration;
 
 import org.eclipse.emf.ecore.EObject;
-import org.eclipse.emf.ecore.util.EcoreUtil;
-import org.eclipse.xtext.XtextPackage;
-import org.eclipse.xtext.nodemodel.ILeafNode;
 import org.eclipse.xtext.nodemodel.INode;
-import org.eclipse.xtext.nodemodel.impl.LeafNode;
-import org.eclipse.xtext.nodemodel.util.NodeModelUtils;
 import org.eclipse.xtext.resource.XtextResource;
 import org.eclipse.xtext.ui.editor.syntaxcoloring.IHighlightedPositionAcceptor;
 import org.eclipse.xtext.ui.editor.syntaxcoloring.ISemanticHighlightingCalculator;
@@ -33,36 +27,22 @@ import org.eclipse.xtext.ui.editor.syntaxcoloring.ISemanticHighlightingCalculato
 public class STSemanticHighlightingCalculator implements
 		ISemanticHighlightingCalculator {
 
-	private void highlightNode(INode node, String id,
-			IHighlightedPositionAcceptor acceptor) {
-		if (node == null)
-			return;
-		if (node instanceof LeafNode) {
-			acceptor.addPosition(node.getOffset(), node.getLength(), id);
-		} else {
-			for (ILeafNode leaf : node.getLeafNodes()) {
-				if (!leaf.isHidden()) {
-					acceptor.addPosition(leaf.getOffset(), leaf.getLength(), id);
-				}
-			}
-		}
-	}
-
 	@Override
 	public void provideHighlightingFor(XtextResource resource,
 			IHighlightedPositionAcceptor acceptor) {
-		if (resource == null)
+		if (resource == null || resource.getParseResult() == null) {
 			return;
-		Iterator<EObject> iter = EcoreUtil.getAllContents(resource, true);
-		while (iter.hasNext()) {
-			EObject current = iter.next();
-			if (current instanceof TopDeclaration) {
-				List<INode> nodes = NodeModelUtils.findNodesForFeature(current,
-						XtextPackage.Literals.ABSTRACT_RULE__NAME);
-				if (!nodes.isEmpty()) {
-					highlightNode(nodes.get(0),
-							STHighlightingConfiguration.TEMPLATE_NAME, acceptor);
-				}
+		}
+
+		INode root = resource.getParseResult().getRootNode();
+		for (INode node : root.getAsTreeIterable()) {
+			EObject eObject = node.getSemanticElement();
+			if (eObject instanceof TopDeclaration) {
+				TopDeclaration topDecl = (TopDeclaration) eObject;
+
+				INode decl = findActualNodeFor(topDecl.getDecl());
+				acceptor.addPosition(decl.getOffset(), decl.getLength(),
+						TEMPLATE_NAME);
 			}
 		}
 	}
