@@ -351,13 +351,11 @@ public class CustomSTLexer extends Lexer {
 					input.consume();
 					return OR; // ||
 				}
-				if (subtemplateDepth > 0) {
-					lexingState.push(LexingState.TEMPLATE);
-				}
 				return PIPE;
 			case '{':
 				input.consume();
 				subtemplateDepth++;
+				lexingState.push(LexingState.TEMPLATE);
 				return LCURLY;
 			default:
 				if (c == delimiterStopChar) {
