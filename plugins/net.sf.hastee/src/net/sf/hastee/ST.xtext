@@ -9,7 +9,7 @@ Group:
 	(members+=TopDeclaration)*;
 
 Import:
-	'import' uri=ExprString;
+	'import' '"' uri=Template '"';
 
 Declaration: name=ID;
 

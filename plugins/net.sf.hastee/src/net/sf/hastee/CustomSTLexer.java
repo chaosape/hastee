@@ -25,7 +25,7 @@ import org.eclipse.xtext.parser.antlr.Lexer;
 public class CustomSTLexer extends Lexer {
 
 	private static enum LexingState {
-		GROUP, INSIDE_EXPR, TMPL_BIGSTRING, TMPL_STRING
+		EXPRESSION, GROUP, TEMPLATE
 	}
 
 	private static final int AND;
@@ -58,8 +58,6 @@ public class CustomSTLexer extends Lexer {
 
 	private static final int ML_COMMENT;
 
-	private static final int NEWLINE;
-
 	private static final int OR;
 
 	private static final int PIPE;
@@ -72,6 +70,8 @@ public class CustomSTLexer extends Lexer {
 
 	private static final int RDELIM;
 
+	private static final int REGION_END;
+
 	private static final int RPAREN;
 
 	private static final int SEMI;
@@ -79,6 +79,8 @@ public class CustomSTLexer extends Lexer {
 	private static final int SL_COMMENT;
 
 	private static final int STRING;
+
+	private static final int TEXT;
 
 	private static final int TMPL_BEGIN;
 
@@ -102,13 +104,13 @@ public class CustomSTLexer extends Lexer {
 		LCURLY = getTokenId(tokenMap, "{");
 		LDELIM = getTokenId(tokenMap, "<");
 		LPAREN = getTokenId(tokenMap, "(");
-		NEWLINE = getTokenId(tokenMap, "\n");
 		OR = getTokenId(tokenMap, "||");
 		PIPE = getTokenId(tokenMap, "|");
 		QUOTE = getTokenId(tokenMap, "\"");
 		RBRACK = getTokenId(tokenMap, "]");
 		RCURLY = getTokenId(tokenMap, "}");
 		RDELIM = getTokenId(tokenMap, ">");
+		REGION_END = getTokenId(tokenMap, "@end");
 		RPAREN = getTokenId(tokenMap, ")");
 		SEMI = getTokenId(tokenMap, ";");
 		TMPL_BEGIN = getTokenId(tokenMap, "<<");
@@ -119,6 +121,7 @@ public class CustomSTLexer extends Lexer {
 		ML_COMMENT = getTokenId(tokenMap, "RULE_ML_COMMENT");
 		SL_COMMENT = getTokenId(tokenMap, "RULE_SL_COMMENT");
 		STRING = getTokenId(tokenMap, "RULE_STRING");
+		TEXT = getTokenId(tokenMap, "RULE_TEXT");
 		WS = getTokenId(tokenMap, "RULE_WS");
 
 		keywords = new HashMap<String, Integer>();
@@ -190,7 +193,11 @@ public class CustomSTLexer extends Lexer {
 
 	private int delimiterStopChar = '>';
 
+	private boolean bigString;
+
 	private Stack<LexingState> lexingState;
+
+	private int subtemplateDepth;
 
 	public CustomSTLexer() {
 		lexingState = new Stack<CustomSTLexer.LexingState>();
@@ -201,13 +208,10 @@ public class CustomSTLexer extends Lexer {
 	private int mColonOrTmplDef() {
 		input.consume();
 		int c = input.LA(1);
-		if (c == ':') {
-			c = input.LA(2);
-			if (c == '=') {
-				input.consume();
-				input.consume();
-				return TMPL_DEF;
-			}
+		if (c == ':' && input.LA(2) == '=') {
+			input.consume();
+			input.consume();
+			return TMPL_DEF;
 		}
 		return COLON;
 	}
@@ -254,9 +258,96 @@ public class CustomSTLexer extends Lexer {
 		return SL_COMMENT;
 	}
 
-	private int mExpression() {
-		// TODO Auto-generated method stub
-		return 0;
+	private int mExpression() throws RecognitionException {
+		while (true) {
+			int c = input.LA(1);
+			switch (c) {
+			case ' ':
+			case '\t':
+			case '\n':
+			case '\r':
+				input.consume();
+				return WS;
+			case '.':
+				input.consume();
+				if (input.LA(1) == '.' && input.LA(2) == '.') {
+					input.consume();
+					input.consume();
+					return ELLIPSIS;
+				}
+				return DOT;
+			case ',':
+				input.consume();
+				return COMMA;
+			case ':':
+				input.consume();
+				return COLON;
+			case ';':
+				input.consume();
+				return SEMI;
+			case '(':
+				input.consume();
+				return LPAREN;
+			case ')':
+				input.consume();
+				return RPAREN;
+			case '[':
+				input.consume();
+				return LBRACK;
+			case ']':
+				input.consume();
+				return RBRACK;
+			case '=':
+				input.consume();
+				return EQUALS;
+			case '!':
+				input.consume();
+				return BANG;
+			case '@':
+				input.consume();
+				if (c == 'e' && input.LA(2) == 'n' && input.LA(3) == 'd') {
+					input.consume();
+					input.consume();
+					input.consume();
+					return REGION_END;
+				}
+				return AT;
+			case '"':
+				return mSTRING();
+			case '&':
+				input.consume();
+				match('&');
+				return AND; // &&
+			case '|':
+				input.consume();
+				if (input.LA(1) == '|') {
+					input.consume();
+					return OR; // ||
+				}
+				if (subtemplateDepth > 0) {
+					lexingState.push(LexingState.TEMPLATE);
+				}
+				return PIPE;
+			case '{':
+				input.consume();
+				subtemplateDepth++;
+				return LCURLY;
+			default:
+				if (c == delimiterStopChar) {
+					input.consume();
+					lexingState.pop(); // get out of expression
+					return RDELIM;
+				}
+				if (isIDStartLetter(c)) {
+					return mIDOrKeyword();
+				}
+				RecognitionException re = new NoViableAltException("", 0, 0,
+						input);
+				re.line = state.tokenStartLine;
+				re.charPositionInLine = state.tokenStartCharPositionInLine;
+				throw re;
+			}
+		}
 	}
 
 	private int mGroup() throws RecognitionException {
@@ -291,7 +382,8 @@ public class CustomSTLexer extends Lexer {
 				return LPAREN;
 			case '"':
 				input.consume();
-				lexingState.push(LexingState.TMPL_BIGSTRING);
+				bigString = false;
+				lexingState.push(LexingState.TEMPLATE);
 				return QUOTE;
 			case ']':
 				input.consume();
@@ -301,8 +393,6 @@ public class CustomSTLexer extends Lexer {
 				return RPAREN;
 			case '<':
 				return mTmplBegin();
-			case '>':
-				return mTmplEnd();
 			}
 		}
 
@@ -359,29 +449,73 @@ public class CustomSTLexer extends Lexer {
 			case '\\':
 				return mTmplESCAPE(); // <\\> <\uFFFF> <\n> etc...
 			default:
-				lexingState.push(LexingState.INSIDE_EXPR);
+				lexingState.push(LexingState.EXPRESSION); // start expression
 				return LDELIM;
 			}
 		}
 
-		throw new NoViableAltException("mTemplate", 0, state.type, input);
+		if (c == '}' && subtemplateDepth > 0) {
+			input.consume();
+			lexingState.pop(); // get out of template
+			subtemplateDepth--;
+			return RCURLY;
+		} else if (bigString) {
+			if (c == '>' && input.LA(2) == '>') {
+				input.consume();
+				input.consume();
+				lexingState.pop();
+				return TMPL_END;
+			}
+		} else if (c == '"') {
+			// implied (bigString == false)
+			input.consume();
+			lexingState.pop();
+			return QUOTE;
+		}
+
+		return mTEXT();
+	}
+
+	/** TEXT : anything until delimiterStartChar or '}' */
+	private int mTEXT() {
+		int c = input.LA(1);
+		while (true) {
+			if (c == Token.EOF) {
+				return Token.EOF;
+			} else if (c == delimiterStartChar) {
+				break; // end of TEXT token
+			} else if (c == '}' && subtemplateDepth > 0) {
+				break; // end of TEXT token
+			} else if (c == '\\') {
+				input.consume(); // toss out \ char
+			} else if (bigString) {
+				if (c == '>' && input.LA(2) == '>') {
+					break; // end of TEXT token
+				}
+			} else if (c == '"') {
+				// implied (bigString == false)
+				break; // end of TEXT token
+			}
+
+			input.consume();
+			c = input.LA(1);
+		}
+
+		return TEXT;
 	}
 
 	/** TMPL_BEGIN : '&lt;' '&lt;' */
 	private int mTmplBegin() throws RecognitionException {
+		bigString = true;
 		input.consume();
-		int c = input.LA(1);
-		if (c == '<') {
-			input.consume();
-			lexingState.push(LexingState.TMPL_STRING);
-			return TMPL_BEGIN;
-		}
-		throw new NoViableAltException("mTmplBegin", 0, state.type, input);
+		match('<');
+		lexingState.push(LexingState.TEMPLATE);
+		return TMPL_BEGIN;
 	}
 
 	/** COMMENT : '&lt;' '!' .* '!' '&gt;' */
 	private int mTmplCOMMENT() throws RecognitionException {
-		input.consume();
+		input.consume(); // kill !
 		int c = input.LA(1);
 		while (!(c == '!' && input.LA(2) == delimiterStopChar)) {
 			if (c == Token.EOF) {
@@ -397,31 +531,23 @@ public class CustomSTLexer extends Lexer {
 
 		// consume '!' '>'
 		input.consume();
-		input.consume();
+		match(delimiterStopChar);
 
 		// skip token
 		state.token = Token.SKIP_TOKEN;
 		return 0;
 	}
 
-	/** TMPL_END : '&gt;' '&gt;' */
-	private int mTmplEnd() throws RecognitionException {
-		input.consume();
-		int c = input.LA(1);
-		if (c == '>') {
-			input.consume();
-			lexingState.pop();
-			return TMPL_END;
-		}
-		throw new NoViableAltException("mTmplEnd", 0, state.type, input);
-	}
-
 	/** */
-	private int mTmplESCAPE() {
-		// TODO ESCAPE token
+	private int mTmplESCAPE() throws RecognitionException {
+		input.consume(); // kill \\
+		int c = input.LA(1);
+		switch (c) {
+		// TODO ESCAPE
+		}
 		input.consume();
-		input.consume();
-		return 0;
+		match(delimiterStopChar);
+		return TEXT;
 	}
 
 	@Override
@@ -432,12 +558,11 @@ public class CustomSTLexer extends Lexer {
 			state.type = mGroup();
 			break;
 
-		case TMPL_STRING:
-		case TMPL_BIGSTRING:
+		case TEMPLATE:
 			state.type = mTemplate();
 			break;
 
-		case INSIDE_EXPR:
+		case EXPRESSION:
 			state.type = mExpression();
 			break;
 		}

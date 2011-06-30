@@ -3,17 +3,7 @@
  */
 package net.sf.hastee.scoping;
 
-import net.sf.hastee.st.ExprReference;
-import net.sf.hastee.st.TemplateDef;
-
-import org.eclipse.emf.ecore.EObject;
-import org.eclipse.emf.ecore.EReference;
-import org.eclipse.xtext.naming.QualifiedName;
-import org.eclipse.xtext.scoping.IScope;
-import org.eclipse.xtext.scoping.Scopes;
 import org.eclipse.xtext.scoping.impl.AbstractDeclarativeScopeProvider;
-
-import com.google.common.base.Function;
 
 /**
  * This class contains custom scoping description.
@@ -24,7 +14,7 @@ import com.google.common.base.Function;
  */
 public class STScopeProvider extends AbstractDeclarativeScopeProvider {
 
-	private IScope getScopeOfArguments(Iterable<Attribute> elements) {
+	/*private IScope getScopeOfArguments(Iterable<Attribute> elements) {
 		return getScopeOfArguments(elements, IScope.NULLSCOPE);
 	}
 
@@ -37,7 +27,7 @@ public class STScopeProvider extends AbstractDeclarativeScopeProvider {
 					}
 				}, outer);
 		return scope;
-	}
+	}*/
 
 	/**
 	 * Returns the scope for looking up an attribute in an argument when
@@ -49,7 +39,7 @@ public class STScopeProvider extends AbstractDeclarativeScopeProvider {
 	 *            a reference
 	 * @return a scope
 	 */
-	public IScope scope_Arg_attribute(ExprReference expr, EReference reference) {
+	/*public IScope scope_Arg_attribute(ExprReference expr, EReference reference) {
 		EObject body = expr.getObjRef().getBody();
 		if (body instanceof TemplateDef) {
 			TemplateDef template = (TemplateDef) body;
@@ -63,6 +53,6 @@ public class STScopeProvider extends AbstractDeclarativeScopeProvider {
 			EReference reference) {
 		return getScopeOfArguments(template.getArguments(),
 				getScope(template.eContainer(), reference));
-	}
+	}*/
 
 }
