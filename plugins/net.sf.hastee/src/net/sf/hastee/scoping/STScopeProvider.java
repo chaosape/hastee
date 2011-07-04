@@ -39,40 +39,6 @@ import org.eclipse.xtext.scoping.impl.AbstractDeclarativeScopeProvider;
  */
 public class STScopeProvider extends AbstractDeclarativeScopeProvider {
 
-	public IScope scope_ExprAttribute_attribute(TemplateAnonymous decl,
-			EReference reference) {
-		IScope scope = Scopes.scopeFor(decl.getArguments(),
-				getScope(decl.eContainer(), reference));
-		return scope;
-	}
-
-	public IScope scope_ExprAttribute_attribute(TemplateDeclaration decl,
-			EReference reference) {
-		IScope scope = Scopes.scopeFor(decl.getAttributes());
-		return scope;
-	}
-
-	/**
-	 * Returns the scope for looking up an attribute in an argument when
-	 * referencing a template.
-	 * 
-	 * @param expr
-	 *            template call expression
-	 * @param reference
-	 *            a reference
-	 * @return a scope
-	 */
-	// public IScope scope_Arg_attribute(ExprReference expr, EReference
-	// reference) {
-	// EObject body = expr.getObjRef().getBody();
-	// if (body instanceof TemplateDef) {
-	// TemplateDef template = (TemplateDef) body;
-	// return getScopeOfArguments(template.getArguments());
-	// } else {
-	// return IScope.NULLSCOPE;
-	// }
-	// }
-
 	public IScope scope_Arg_attribute(ExprReference expr, EReference reference) {
 		Declaration declaration = expr.getObjRef();
 		EObject cter = declaration.eContainer();
@@ -86,6 +52,19 @@ public class STScopeProvider extends AbstractDeclarativeScopeProvider {
 			}
 		}
 		return IScope.NULLSCOPE;
+	}
+
+	public IScope scope_ExprAttribute_attribute(TemplateAnonymous decl,
+			EReference reference) {
+		IScope scope = Scopes.scopeFor(decl.getArguments(),
+				getScope(decl.eContainer(), reference));
+		return scope;
+	}
+
+	public IScope scope_ExprAttribute_attribute(TemplateDeclaration decl,
+			EReference reference) {
+		IScope scope = Scopes.scopeFor(decl.getAttributes());
+		return scope;
 	}
 
 }
