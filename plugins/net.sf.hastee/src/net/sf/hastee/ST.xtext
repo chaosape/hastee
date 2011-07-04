@@ -62,7 +62,7 @@ DefaultAttribute:
 	decl = Declaration '=' defaultValue = DefaultValue;
 
 DefaultValue:
-	string=ExprString
+	('"' string=Template '"')
 	| bool='true'
 	| bool='false';
 
