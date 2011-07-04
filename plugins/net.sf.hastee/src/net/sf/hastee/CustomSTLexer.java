@@ -52,7 +52,7 @@ import org.eclipse.xtext.parser.antlr.Lexer;
 public class CustomSTLexer extends Lexer {
 
 	private static enum LexingState {
-		EXPRESSION, GROUP, TEMPLATE
+		EXPRESSION, GROUP, TEMPLATE, TEMPLATE_ANON
 	}
 
 	private static final int AND;
@@ -216,11 +216,11 @@ public class CustomSTLexer extends Lexer {
 		return c == ' ' || c == '\t' || c == '\n' || c == '\r';
 	}
 
+	private boolean bigString;
+
 	private int delimiterStartChar = '<';
 
 	private int delimiterStopChar = '>';
-
-	private boolean bigString;
 
 	private Stack<LexingState> lexingState;
 
@@ -229,6 +229,54 @@ public class CustomSTLexer extends Lexer {
 	public CustomSTLexer() {
 		lexingState = new Stack<CustomSTLexer.LexingState>();
 		lexingState.push(LexingState.GROUP);
+	}
+
+	/** ',' | ID | WS | '|' */
+	private int mAnonTemplate() throws RecognitionException {
+		int c = input.LA(1);
+		if (isWS(c)) {
+			return mWS();
+		} else if (isIDStartLetter(c)) {
+			return mIDOrKeyword(false); // do not look for keywords
+		} else {
+			switch (c) {
+			case ',':
+				input.consume();
+				return COMMA;
+			case '|':
+				input.consume();
+				lexingState.pop(); // get out of template anonymous state
+				lexingState.push(LexingState.TEMPLATE);
+				return PIPE;
+			}
+		}
+
+		throw new NoViableAltException("mAnonTemplate", 0, state.type, input);
+	}
+
+	/** ((',' | ID | WS)* '|')? */
+	private int mAnonTmplStart() {
+		input.consume();
+		subtemplateDepth++;
+
+		int c = input.LA(1);
+		int i = 1;
+		boolean pipeSeen = false;
+		while (!pipeSeen && c != '}') {
+			if (c == '|') {
+				pipeSeen = true;
+			} else if (!isWS(c) && c != ',' && !isIDLetter(c)) {
+				// no whitespace, comma or ID char => we should not see a pipe
+				break;
+			} else {
+				i++;
+				c = input.LA(i);
+			}
+		}
+
+		lexingState.push(pipeSeen ? LexingState.TEMPLATE_ANON
+				: LexingState.TEMPLATE);
+		return LCURLY;
 	}
 
 	/** ':' | '::=' */
@@ -347,16 +395,10 @@ public class CustomSTLexer extends Lexer {
 				return AND; // &&
 			case '|':
 				input.consume();
-				if (input.LA(1) == '|') {
-					input.consume();
-					return OR; // ||
-				}
-				return PIPE;
+				match('|');
+				return OR; // ||
 			case '{':
-				input.consume();
-				subtemplateDepth++;
-				lexingState.push(LexingState.TEMPLATE);
-				return LCURLY;
+				return mAnonTmplStart();
 			default:
 				if (c == delimiterStopChar) {
 					input.consume();
@@ -364,7 +406,7 @@ public class CustomSTLexer extends Lexer {
 					return RDELIM;
 				}
 				if (isIDStartLetter(c)) {
-					return mIDOrKeyword();
+					return mIDOrKeyword(true);
 				}
 				RecognitionException re = new NoViableAltException("", 0, 0,
 						input);
@@ -378,9 +420,9 @@ public class CustomSTLexer extends Lexer {
 	private int mGroup() throws RecognitionException {
 		int c = input.LA(1);
 		if (isWS(c)) {
-			return mWS(c);
+			return mWS();
 		} else if (isIDStartLetter(c)) {
-			return mIDOrKeyword();
+			return mIDOrKeyword(true);
 		} else {
 			switch (c) {
 			case '/':
@@ -425,7 +467,7 @@ public class CustomSTLexer extends Lexer {
 	}
 
 	/** ID : ('a'..'z'|'A'..'Z'|'_'|'/') ('a'..'z'|'A'..'Z'|'0'..'9'|'_'|'/')* ; */
-	private int mIDOrKeyword() {
+	private int mIDOrKeyword(boolean replaceKeywords) {
 		input.consume();
 		int c = input.LA(1);
 		while (isIDLetter(c)) {
@@ -435,13 +477,15 @@ public class CustomSTLexer extends Lexer {
 
 		// emit an ID token tentatively
 		state.type = ID;
-		Token id = emit();
-		String name = id.getText();
-		Integer value = keywords.get(name);
-		if (value != null) {
-			// if ID is a keyword, forget the token emitted and set the type
-			state.token = null;
-			state.type = value;
+		if (replaceKeywords) {
+			Token id = emit();
+			String name = id.getText();
+			Integer value = keywords.get(name);
+			if (value != null) {
+				// if ID is a keyword, forget the token emitted and set the type
+				state.token = null;
+				state.type = value;
+			}
 		}
 		return state.type;
 	}
@@ -590,10 +634,15 @@ public class CustomSTLexer extends Lexer {
 		case EXPRESSION:
 			state.type = mExpression();
 			break;
+
+		case TEMPLATE_ANON:
+			state.type = mAnonTemplate();
+			break;
 		}
 	}
 
-	private int mWS(int c) {
+	private int mWS() {
+		int c = input.LA(1);
 		while (Character.isWhitespace((char) c)) {
 			input.consume();
 			c = input.LA(1);
