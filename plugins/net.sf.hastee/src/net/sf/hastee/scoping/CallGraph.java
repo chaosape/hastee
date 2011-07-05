@@ -30,12 +30,15 @@ import java.util.Set;
 import java.util.WeakHashMap;
 
 import net.sf.hastee.st.Declaration;
+import net.sf.hastee.st.DictionaryDeclaration;
 import net.sf.hastee.st.ExprReference;
 import net.sf.hastee.st.Group;
+import net.sf.hastee.st.TemplateAnonymous;
 import net.sf.hastee.st.TemplateDeclaration;
 
 import org.eclipse.emf.common.util.TreeIterator;
 import org.eclipse.emf.ecore.EObject;
+import org.eclipse.xtext.EcoreUtil2;
 
 /**
  * This class defines methods to compute the call graph of each template.
@@ -56,27 +59,31 @@ public class CallGraph {
 	 * @return the call graph associated with the given group
 	 */
 	public static CallGraph getCallGraph(Group group) {
-		CallGraph cg = map.get(group);
-		if (cg == null) {
-			cg = new CallGraph();
-			cg.build(group);
-			map.put(group, cg);
+		// at most one access on the map
+		// because Xtext spawns one build thread + one validation thread
+		synchronized (map) {
+			CallGraph cg = map.get(group);
+			if (cg == null) {
+				cg = new CallGraph();
+				cg.build(group);
+				map.put(group, cg);
+			}
+			return cg;
 		}
-		return cg;
 	}
 
-	private Map<TemplateDeclaration, Set<TemplateDeclaration>> calleesMap;
+	private Map<EObject, Set<EObject>> calleesMap;
 
-	private Map<TemplateDeclaration, Set<TemplateDeclaration>> callersMap;
+	private Map<EObject, Set<EObject>> callersMap;
 
-	private Deque<TemplateDeclaration> callStack;
+	private Deque<EObject> callStack;
 
 	/**
 	 * Creates a new empty call graph.
 	 */
 	public CallGraph() {
-		calleesMap = new HashMap<TemplateDeclaration, Set<TemplateDeclaration>>();
-		callersMap = new HashMap<TemplateDeclaration, Set<TemplateDeclaration>>();
+		calleesMap = new HashMap<EObject, Set<EObject>>();
+		callersMap = new HashMap<EObject, Set<EObject>>();
 	}
 
 	/**
@@ -90,11 +97,11 @@ public class CallGraph {
 	 * @param target
 	 *            target template
 	 */
-	private void add(Map<TemplateDeclaration, Set<TemplateDeclaration>> map,
-			TemplateDeclaration source, TemplateDeclaration target) {
-		Set<TemplateDeclaration> set = map.get(source);
+	private void add(Map<EObject, Set<EObject>> map, EObject source,
+			EObject target) {
+		Set<EObject> set = map.get(source);
 		if (set == null) {
-			set = new HashSet<TemplateDeclaration>();
+			set = new HashSet<EObject>();
 			map.put(source, set);
 		}
 
@@ -110,22 +117,16 @@ public class CallGraph {
 	private void build(Group group) {
 		for (Declaration topDecl : group.getMembers()) {
 			EObject contents = topDecl.getContents();
-			if (contents instanceof TemplateDeclaration) {
-				TemplateDeclaration tmplDecl = (TemplateDeclaration) contents;
-				callStack = new ArrayDeque<TemplateDeclaration>();
-				visit(tmplDecl);
-			}
+			callStack = new ArrayDeque<EObject>();
+			visit(contents);
 		}
 
 		for (Declaration topDecl : group.getMembers()) {
 			EObject contents = topDecl.getContents();
-			if (contents instanceof TemplateDeclaration) {
-				TemplateDeclaration tmplDecl = (TemplateDeclaration) contents;
-				if (getCaller(tmplDecl) == null) {
-					// got a potential top
-					callStack = new ArrayDeque<TemplateDeclaration>();
-					removeCycles(tmplDecl);
-				}
+			if (getCaller(contents) == null) {
+				// got a potential top
+				callStack = new ArrayDeque<EObject>();
+				removeCycles(contents);
 			}
 		}
 	}
@@ -138,8 +139,8 @@ public class CallGraph {
 	 * @return the caller of the given callee, or <code>null</code> if the given
 	 *         template is never called
 	 */
-	public TemplateDeclaration getCaller(TemplateDeclaration callee) {
-		Set<TemplateDeclaration> callers = callersMap.get(callee);
+	public EObject getCaller(EObject callee) {
+		Set<EObject> callers = callersMap.get(callee);
 		if (callers == null || callers.isEmpty()) {
 			return null;
 		}
@@ -149,16 +150,16 @@ public class CallGraph {
 	/**
 	 * This method visits this call graph and removes cycles.
 	 */
-	private void removeCycles(TemplateDeclaration caller) {
+	private void removeCycles(EObject caller) {
 		callStack.push(caller);
-		Set<TemplateDeclaration> callees = calleesMap.get(caller);
+		Set<EObject> callees = calleesMap.get(caller);
 		if (callees != null) {
-			Iterator<TemplateDeclaration> it = callees.iterator();
+			Iterator<EObject> it = callees.iterator();
 			while (it.hasNext()) {
-				TemplateDeclaration callee = it.next();
+				EObject callee = it.next();
 				if (callStack.contains(callee)) {
 					it.remove();
-					Set<TemplateDeclaration> callers = callersMap.get(callee);
+					Set<EObject> callers = callersMap.get(callee);
 					callers.remove(caller);
 				} else {
 					removeCycles(callee);
@@ -171,18 +172,29 @@ public class CallGraph {
 	@Override
 	public String toString() {
 		StringBuilder builder = new StringBuilder();
-		for (Entry<TemplateDeclaration, Set<TemplateDeclaration>> entry : callersMap
-				.entrySet()) {
-			Declaration callee = (Declaration) entry.getKey().eContainer();
-			builder.append(callee.getName());
+		for (Entry<EObject, Set<EObject>> entry : callersMap.entrySet()) {
+			builder.append(toString(entry.getKey()));
 			builder.append(" <- ");
-			for (TemplateDeclaration caller : entry.getValue()) {
-				builder.append((Declaration) caller.eContainer());
-				builder.append(" ");
+			Set<EObject> callers = entry.getValue();
+			if (callers != null) {
+				for (EObject caller : callers) {
+					builder.append(toString(caller));
+					builder.append(" ");
+				}
 			}
 			builder.append('\n');
 		}
 		return builder.toString();
+	}
+
+	private String toString(EObject eObject) {
+		if (eObject instanceof TemplateDeclaration) {
+			Declaration decl = EcoreUtil2.getContainerOfType(eObject,
+					Declaration.class);
+			return decl.getName();
+		} else {
+			return "{}";
+		}
 	}
 
 	/**
@@ -191,7 +203,7 @@ public class CallGraph {
 	 * @param caller
 	 *            a template declaration that may call other templates
 	 */
-	private void visit(TemplateDeclaration caller) {
+	private void visit(EObject caller) {
 		if (callStack.contains(caller)) {
 			return;
 		}
@@ -210,7 +222,20 @@ public class CallGraph {
 					add(callersMap, callee, caller);
 
 					visit(callee);
+				} else if (contents instanceof DictionaryDeclaration) {
+					System.err.println("dict");
 				}
+			} else if (eObject instanceof TemplateAnonymous) {
+				TemplateAnonymous callee = (TemplateAnonymous) eObject;
+				add(calleesMap, caller, callee);
+				add(callersMap, callee, caller);
+
+				visit(callee);
+
+				// do not visit children of this anonymous template, otherwise
+				// this messes up the call graph by introducing redundant call
+				// dependencies
+				it.prune();
 			}
 		}
 
