@@ -1,7 +1,12 @@
 /**/
 /***/
 
-import "xyz"
+w ::= [
+	"a":
+<<
+	b
+>>
+]
 
 sub1(x) ::= <<
 <if (x)><sub2()><endif>
@@ -12,8 +17,9 @@ sub2() ::= <<
 >>
 
 top(y) ::= <<
+<w>
 <sub1(x=y)>
-<y: {tr | <schedulerFSM()>}>
+<y: {tr | <i0> <schedulerFSM()>}>
 >>
 
 schedulerFSM(action) ::= <<
