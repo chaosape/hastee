@@ -1,7 +1,10 @@
+/**/
+/***/
+
 import "xyz"
 
 sub1(x) ::= <<
-<if (x)><sub2(x)><endif>
+<if (x)><sub2()><endif>
 >>
 
 sub2() ::= <<
@@ -10,4 +13,9 @@ sub2() ::= <<
 
 top(y) ::= <<
 <sub1(x=y)>
+<y: {tr | <schedulerFSM()>}>
+>>
+
+schedulerFSM(action) ::= <<
+<tr.state.name>
 >>

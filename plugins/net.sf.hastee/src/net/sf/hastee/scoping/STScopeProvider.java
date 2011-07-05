@@ -64,9 +64,6 @@ public class STScopeProvider extends AbstractDeclarativeScopeProvider {
 		TemplateDeclaration caller = icg.getCaller(decl);
 		IScope outer = (caller == null) ? IScope.NULLSCOPE : getScope(caller,
 				reference);
-		if (caller != null) {
-			System.out.println(((Declaration) caller.eContainer()).getName());
-		}
 		IScope scope = Scopes.scopeFor(decl.getAttributes(), outer);
 		return scope;
 	}

@@ -19,13 +19,14 @@
  */
 package net.sf.hastee.scoping;
 
+import java.util.ArrayDeque;
+import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
-import java.util.Stack;
 import java.util.WeakHashMap;
 
 import net.sf.hastee.st.Declaration;
@@ -64,15 +65,40 @@ public class InverseCallGraph {
 		return icg;
 	}
 
-	private Stack<TemplateDeclaration> callStack;
+	private Map<TemplateDeclaration, Set<TemplateDeclaration>> calleesMap;
 
 	private Map<TemplateDeclaration, Set<TemplateDeclaration>> callersMap;
+
+	private Deque<TemplateDeclaration> callStack;
 
 	/**
 	 * Creates a new empty inverse call graph.
 	 */
 	public InverseCallGraph() {
+		calleesMap = new HashMap<TemplateDeclaration, Set<TemplateDeclaration>>();
 		callersMap = new HashMap<TemplateDeclaration, Set<TemplateDeclaration>>();
+	}
+
+	/**
+	 * Adds an edge from <code>source</code> to <code>target</code> to the given
+	 * <code>map</code>.
+	 * 
+	 * @param map
+	 *            a map from source to a set of targets
+	 * @param source
+	 *            source template
+	 * @param target
+	 *            target template
+	 */
+	private void add(Map<TemplateDeclaration, Set<TemplateDeclaration>> map,
+			TemplateDeclaration source, TemplateDeclaration target) {
+		Set<TemplateDeclaration> set = map.get(source);
+		if (set == null) {
+			set = new HashSet<TemplateDeclaration>();
+			map.put(source, set);
+		}
+
+		set.add(target);
 	}
 
 	/**
@@ -81,17 +107,27 @@ public class InverseCallGraph {
 	 * @param group
 	 *            a group
 	 */
-	public void build(Group group) {
+	private void build(Group group) {
 		for (Declaration topDecl : group.getMembers()) {
 			EObject contents = topDecl.getContents();
 			if (contents instanceof TemplateDeclaration) {
 				TemplateDeclaration tmplDecl = (TemplateDeclaration) contents;
-				callStack = new Stack<TemplateDeclaration>();
+				callStack = new ArrayDeque<TemplateDeclaration>();
 				visit(tmplDecl);
 			}
 		}
 
-		removeCycles();
+		for (Declaration topDecl : group.getMembers()) {
+			EObject contents = topDecl.getContents();
+			if (contents instanceof TemplateDeclaration) {
+				TemplateDeclaration tmplDecl = (TemplateDeclaration) contents;
+				if (getCaller(tmplDecl) == null) {
+					// got a potential top
+					callStack = new ArrayDeque<TemplateDeclaration>();
+					removeCycles(tmplDecl);
+				}
+			}
+		}
 	}
 
 	/**
@@ -114,23 +150,23 @@ public class InverseCallGraph {
 	 * This method visits this inverse call graph and removes any simple cycle
 	 * that may exist.
 	 */
-	private void removeCycles() {
-		for (Entry<TemplateDeclaration, Set<TemplateDeclaration>> entry : callersMap
-				.entrySet()) {
-			TemplateDeclaration callee = entry.getKey();
-			Set<TemplateDeclaration> callers = entry.getValue();
-			if (callers == null) {
-				continue;
-			}
-			Iterator<TemplateDeclaration> it = callers.iterator();
+	private void removeCycles(TemplateDeclaration caller) {
+		callStack.push(caller);
+		Set<TemplateDeclaration> callees = calleesMap.get(caller);
+		if (callees != null) {
+			Iterator<TemplateDeclaration> it = callees.iterator();
 			while (it.hasNext()) {
-				TemplateDeclaration caller = it.next();
-				Set<TemplateDeclaration> callerCallers = callersMap.get(caller);
-				if (callerCallers != null && callerCallers.contains(callee)) {
+				TemplateDeclaration callee = it.next();
+				if (callStack.contains(callee)) {
 					it.remove();
+					Set<TemplateDeclaration> callers = callersMap.get(callee);
+					callers.remove(caller);
+				} else {
+					removeCycles(callee);
 				}
 			}
 		}
+		callStack.pop();
 	}
 
 	@Override
@@ -156,7 +192,7 @@ public class InverseCallGraph {
 	 * @param caller
 	 *            a template declaration that may call other templates
 	 */
-	public void visit(TemplateDeclaration caller) {
+	private void visit(TemplateDeclaration caller) {
 		if (callStack.contains(caller)) {
 			return;
 		}
@@ -171,13 +207,9 @@ public class InverseCallGraph {
 				EObject contents = decl.getContents();
 				if (contents instanceof TemplateDeclaration) {
 					TemplateDeclaration callee = (TemplateDeclaration) contents;
-					Set<TemplateDeclaration> callers = callersMap.get(callee);
-					if (callers == null) {
-						callers = new HashSet<TemplateDeclaration>();
-						callersMap.put(callee, callers);
-					}
+					add(calleesMap, caller, callee);
+					add(callersMap, callee, caller);
 
-					callers.add(caller);
 					visit(callee);
 				}
 			}
