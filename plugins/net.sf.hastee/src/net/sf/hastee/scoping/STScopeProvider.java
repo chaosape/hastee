@@ -22,6 +22,7 @@ package net.sf.hastee.scoping;
 import net.sf.hastee.st.Declaration;
 import net.sf.hastee.st.DeclarationBody;
 import net.sf.hastee.st.ExprReference;
+import net.sf.hastee.st.Group;
 import net.sf.hastee.st.TemplateAnonymous;
 import net.sf.hastee.st.TemplateDeclaration;
 import net.sf.hastee.st.TopDeclaration;
@@ -63,7 +64,12 @@ public class STScopeProvider extends AbstractDeclarativeScopeProvider {
 
 	public IScope scope_ExprAttribute_attribute(TemplateDeclaration decl,
 			EReference reference) {
-		IScope scope = Scopes.scopeFor(decl.getAttributes());
+		Group group = (Group) decl.eContainer().eContainer();
+		InverseCallGraph icg = InverseCallGraph.getICG(group);
+		TemplateDeclaration caller = icg.getCaller(decl);
+		IScope outer = (caller == null) ? IScope.NULLSCOPE : getScope(caller,
+				reference);
+		IScope scope = Scopes.scopeFor(decl.getAttributes(), outer);
 		return scope;
 	}
 

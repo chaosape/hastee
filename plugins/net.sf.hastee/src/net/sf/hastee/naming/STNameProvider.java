@@ -22,6 +22,7 @@ package net.sf.hastee.naming;
 import net.sf.hastee.st.Declaration;
 import net.sf.hastee.st.Option;
 import net.sf.hastee.st.Property;
+import net.sf.hastee.st.TemplateAnonymous;
 import net.sf.hastee.st.TopDeclaration;
 
 import org.eclipse.xtext.naming.DefaultDeclarativeQualifiedNameProvider;
@@ -54,6 +55,10 @@ public class STNameProvider extends DefaultDeclarativeQualifiedNameProvider {
 	public QualifiedName qualifiedName(Property property) {
 		// name is private
 		return null;
+	}
+
+	public QualifiedName qualifiedName(TemplateAnonymous tmpl) {
+		return getConverter().toQualifiedName(tmpl.toString());
 	}
 
 	public QualifiedName qualifiedName(TopDeclaration topDecl) {

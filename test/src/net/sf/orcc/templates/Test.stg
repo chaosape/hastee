@@ -1,8 +1,13 @@
 import "xyz"
 
-x(y) ::= <<
-<y>
+sub1(x) ::= <<
+<if (x)><sub2(x)><endif>
 >>
 
-z(y) ::= <<
+sub2() ::= <<
+<if (!x)><sub1(x)><endif>
+>>
+
+top(y) ::= <<
+<sub1(x=y)>
 >>

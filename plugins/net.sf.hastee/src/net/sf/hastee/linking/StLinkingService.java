@@ -25,20 +25,16 @@ import java.util.List;
 import java.util.Map;
 
 import net.sf.hastee.st.Declaration;
-import net.sf.hastee.st.Group;
 import net.sf.hastee.st.StFactory;
 import net.sf.hastee.st.StPackage;
-import net.sf.hastee.st.TemplateDef;
 
 import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.ecore.EClass;
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.EReference;
 import org.eclipse.emf.ecore.resource.Resource;
-import org.eclipse.xtext.EcoreUtil2;
 import org.eclipse.xtext.linking.impl.DefaultLinkingService;
 import org.eclipse.xtext.nodemodel.INode;
-import org.eclipse.xtext.util.OnChangeEvictingCache;
 
 /**
  * This class defines a linking service for built-in ST functions and implicit
@@ -113,38 +109,6 @@ public class StLinkingService extends DefaultLinkingService {
 		return Collections.emptyList();
 	}
 
-	private List<EObject> getImplicitAttribute(EObject context, String s) {
-		// a TemplateDef may reference attributes from other templates that
-		// can call it
-		TemplateDef template = EcoreUtil2.getContainerOfType(context,
-				TemplateDef.class);
-		Group group = EcoreUtil2.getContainerOfType(template, Group.class);
-		OnChangeEvictingCache.CacheAdapter cache = new OnChangeEvictingCache()
-				.getOrCreate(group.eResource());
-		Map<TemplateDef, Map<String, Declaration>> map = cache
-				.get("AttributeMap");
-		if (map == null) {
-			map = new ImplicitAttributeSolver().buildAttributeMap(group);
-			cache.set("AttributeMap", map);
-		}
-
-		Map<String, Declaration> implicitAttrs = map.get(template);
-		if (implicitAttrs != null) {
-			Declaration attr = implicitAttrs.get(s);
-			if (attr != null) {
-				return Collections.singletonList((EObject) attr);
-			}
-		}
-
-		if (s.equals("i") || s.equals("i0")) {
-			Resource res = makeResource(context.eResource());
-			res.getContents().add(i0);
-			return Collections.singletonList((EObject) i0);
-		}
-
-		return Collections.emptyList();
-	}
-
 	@Override
 	public List<EObject> getLinkedObjects(EObject context, EReference ref,
 			INode node) {
@@ -157,7 +121,7 @@ public class StLinkingService extends DefaultLinkingService {
 		final String s = getCrossRefNodeAsString(node);
 		if (requiredType != null && s != null) {
 			if (StPackage.Literals.DECLARATION.isSuperTypeOf(requiredType)) {
-				return getImplicitAttribute(context, s);
+				return getBuiltinFunction(context, s);
 			}
 		}
 
