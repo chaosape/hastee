@@ -45,9 +45,7 @@ import org.eclipse.xtext.nodemodel.INode;
  */
 public class StLinkingService extends DefaultLinkingService {
 
-	private Map<String, Declaration> functions;
-
-	private Declaration i0;
+	private Map<String, Declaration> declarations;
 
 	private Resource stubsResource = null;
 
@@ -55,55 +53,48 @@ public class StLinkingService extends DefaultLinkingService {
 	 * Creates a new ST linking service which creates builtin functions.
 	 */
 	public StLinkingService() {
-		functions = new HashMap<String, Declaration>();
+		declarations = new HashMap<String, Declaration>();
 
-		addFunction("first");
-		addFunction("last");
-		addFunction("rest");
-		addFunction("trunc");
-		addFunction("strip");
-		addFunction("length");
-
-		i0 = StFactory.eINSTANCE.createDeclaration();
-		i0.setName("i0");
+		addDeclaration("first");
+		addDeclaration("last");
+		addDeclaration("rest");
+		addDeclaration("trunc");
+		addDeclaration("strip");
+		addDeclaration("length");
+		addDeclaration("i0");
+		addDeclaration("i");
 	}
 
 	/**
-	 * Adds a new function to the built-in functions map with the given
-	 * parameters types and return type.
+	 * Adds a new declaration to the built-in declarations map.
 	 * 
 	 * @param name
-	 *            function name
-	 * @param parameters
-	 *            types of function parameters
-	 * @param returnType
-	 *            return type
+	 *            declaration name
 	 */
-	private void addFunction(String name) {
-		Declaration obj;
-		obj = StFactory.eINSTANCE.createDeclaration();
-		obj.setName(name);
-		functions.put(name, obj);
+	private void addDeclaration(String name) {
+		Declaration decl = StFactory.eINSTANCE.createDeclaration();
+		decl.setName(name);
+		declarations.put(name, decl);
 	}
 
 	/**
-	 * Returns a singleton if <code>name</code> is a builtin function, and an
+	 * Returns a singleton if <code>name</code> is a builtin declaration, and an
 	 * empty list otherwise.
 	 * 
 	 * @param context
 	 *            the context in which a function is referenced.
 	 * @param name
-	 *            function name
+	 *            declaration name
 	 * @return a list
 	 */
-	private List<EObject> getBuiltinFunction(EObject context, String name) {
-		Declaration function = functions.get(name);
-		if (function != null) {
+	private List<EObject> getBuiltinDeclaration(EObject context, String name) {
+		Declaration declaration = declarations.get(name);
+		if (declaration != null) {
 			// Attach the stub to the resource that's being parsed
 			Resource res = makeResource(context.eResource());
-			res.getContents().add(function);
+			res.getContents().add(declaration);
 
-			return Collections.singletonList((EObject) function);
+			return Collections.singletonList((EObject) declaration);
 		}
 
 		return Collections.emptyList();
@@ -121,7 +112,7 @@ public class StLinkingService extends DefaultLinkingService {
 		final String s = getCrossRefNodeAsString(node);
 		if (requiredType != null && s != null) {
 			if (StPackage.Literals.DECLARATION.isSuperTypeOf(requiredType)) {
-				return getBuiltinFunction(context, s);
+				return getBuiltinDeclaration(context, s);
 			}
 		}
 
