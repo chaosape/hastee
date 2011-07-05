@@ -127,7 +127,7 @@ printParameter(parameter) ::= <<
 
 printCall(call) ::= << 
 //ERROR this function call must be removed, in this case we give a 1, it is OK if it is "data"
-<if(call.print)>printf(<call.parameters: PrintFormat()><call.parameters: PrintParameter()>);<
+<if(call.print)><
 else
 ><if(call.target)><call.target.variable.name> = <endif> 1;<
 endif>
@@ -140,22 +140,22 @@ printLoad(load) ::= <<
 >>
 
 
-printRead(read) ::= <<
+/*printRead(read) ::= <<
 
 <if (read.target)>
 chan_<instance.id>_<read.port>?<read.target>[0];
 <endif>
->>
+>>*/
 
 printStore(store) ::= <<
 
 <store.target.variable.name><store.indexes : {index | [<index>]}> = <store.value>;
 >>
 
-Write(write) ::= <<
+/*Write(write) ::= <<
 
 chan_<instance.id>_<write.port>!<write.target>[0];
->>
+>>*/
 
 printReturn(return) ::= <<
 
@@ -376,13 +376,13 @@ outputChannelCheck(pattern) ::= <<
 
 // needed in case of time dependent condition, not used yet
 
-negInputChannelCheck(pattern) ::= <<
-<pattern.ports: {port | || empty(chan_<instance.id>_<port.name>)} >
->>
+//negInputChannelCheck(pattern) ::= <<
+//<pattern.ports: {port | || empty(chan_<instance.id>_<port.name>)} >
+//>>
 
-negOutputChannelCheck(pattern) ::= <<
-<pattern.ports: {port | || full(chan_<instance.id>_<port.name>)} >
->>
+//negOutputChannelCheck(pattern) ::= <<
+//<pattern.ports: {port | || full(chan_<instance.id>_<port.name>)} >
+//>>
 
 
 ///////////////////////////////////////////////////////////////////////////////
