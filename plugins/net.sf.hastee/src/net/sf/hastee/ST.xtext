@@ -25,31 +25,37 @@ generate st "http://www.sf.net/hastee/ST"
 // entry point
 Group:
 	(imports+=Import)*
-	(members+=TopDeclaration)*;
+	(members+=GroupMember)*;
 
 Import:
 	'import' '"' uri=Template '"';
 
-Declaration: name=ID;
-
-TopDeclaration:
-	decl = Declaration
-	body = DeclarationBody;
-
-DeclarationBody: TemplateDeclaration | DictionaryDeclaration;
-
 // top-level elements: TemplateNamed and Dictionary
+GroupMember returns Declaration:
+	name = ID
+	contents = MemberBody;
+
+MemberBody: TemplateDeclaration | DictionaryDeclaration;
+
 TemplateDeclaration:
-	'(' ( (attributes += Declaration (',' attributes += Declaration)* (',' defaultAttributes += DefaultAttribute)*)
-		| (defaultAttributes += DefaultAttribute (',' defaultAttributes += DefaultAttribute)*))?
+	'(' ( (attributes += Attribute (',' attributes += Attribute)* (',' attributes += DefaultAttribute)*)
+		| (attributes += DefaultAttribute (',' attributes += DefaultAttribute)*))?
 	')' '::='
 	definition = TemplateDef;
 
-DictionaryDeclaration:
-	'::=' '[' pairs+=DictPair (',' pairs+=DictPair)* ']';
+Attribute returns Declaration: name=ID;
+DefaultAttribute returns Declaration: name=ID '=' contents = DefaultValue;
 
-DictPair:
-	key=ExprString ':' definition = TemplateDef;
+DefaultValue:
+	('"' string=Template '"')
+	| bool='true'
+	| bool='false';
+
+DictionaryDeclaration:
+	'::=' '[' pairs+=Pair (',' pairs+=Pair)* ']';
+
+Pair:
+	'"' key=Template '"' ':' definition = TemplateDef;
 
 TemplateDef:
 	(('<<' template = Template '>>')
@@ -58,18 +64,10 @@ TemplateDef:
 Template:
 	{Template} (elements+=Element)*;
 
-DefaultAttribute:
-	decl = Declaration '=' defaultValue = DefaultValue;
-
-DefaultValue:
-	('"' string=Template '"')
-	| bool='true'
-	| bool='false';
-
 // anonymous template
 TemplateAnonymous:
 	'{'
-	(arguments += Declaration (',' arguments += Declaration)* '|')?
+	(arguments += Attribute (',' arguments += Attribute)* '|')?
 	template = Template
 	'}';
 
@@ -143,7 +141,7 @@ ExprInclude:
 
 // call to template
 ExprReference:
-	objRef=[Declaration] '(' args=ExprTemplateArgs? ')';
+	target=[Declaration] '(' args=ExprTemplateArgs? ')';
 
 ExprTemplateArgs:
 	NamedArgs

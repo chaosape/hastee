@@ -23,7 +23,6 @@ import net.sf.hastee.st.Declaration;
 import net.sf.hastee.st.Option;
 import net.sf.hastee.st.Property;
 import net.sf.hastee.st.TemplateAnonymous;
-import net.sf.hastee.st.TopDeclaration;
 
 import org.eclipse.xtext.naming.DefaultDeclarativeQualifiedNameProvider;
 import org.eclipse.xtext.naming.QualifiedName;
@@ -37,14 +36,7 @@ import org.eclipse.xtext.naming.QualifiedName;
 public class STNameProvider extends DefaultDeclarativeQualifiedNameProvider {
 
 	public QualifiedName qualifiedName(Declaration decl) {
-		if (decl.eContainer() instanceof TopDeclaration) {
-			return getConverter().toQualifiedName(decl.getName());
-		}
-
-		// for declarations inside TemplateDeclaration
-		// will make the provider use the "name" field and prepend it with the
-		// container's name
-		return null;
+		return null; // getConverter().toQualifiedName(decl.getName());
 	}
 
 	public QualifiedName qualifiedName(Option option) {
@@ -59,10 +51,6 @@ public class STNameProvider extends DefaultDeclarativeQualifiedNameProvider {
 
 	public QualifiedName qualifiedName(TemplateAnonymous tmpl) {
 		return getConverter().toQualifiedName(tmpl.toString());
-	}
-
-	public QualifiedName qualifiedName(TopDeclaration topDecl) {
-		return getFullyQualifiedName(topDecl.getDecl());
 	}
 
 }

@@ -22,14 +22,14 @@ package net.sf.hastee;
 import java.io.File;
 import java.util.List;
 
-import net.sf.hastee.st.DeclarationBody;
-import net.sf.hastee.st.DictPair;
+import net.sf.hastee.st.Declaration;
 import net.sf.hastee.st.DictionaryDeclaration;
 import net.sf.hastee.st.Group;
+import net.sf.hastee.st.Pair;
 import net.sf.hastee.st.TemplateDeclaration;
-import net.sf.hastee.st.TopDeclaration;
 
 import org.eclipse.emf.common.util.URI;
+import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.resource.Resource;
 import org.eclipse.emf.ecore.resource.Resource.Diagnostic;
 import org.eclipse.xtext.resource.XtextResource;
@@ -62,19 +62,19 @@ public class Main {
 			}
 		}
 
-		for (TopDeclaration member : group.getMembers()) {
-			System.out.print(member.getDecl().getName());
-			DeclarationBody body = member.getBody();
-			if (body instanceof TemplateDeclaration) {
-				TemplateDeclaration decl = (TemplateDeclaration) body;
+		for (Declaration member : group.getMembers()) {
+			System.out.print(member.getName());
+			EObject contents = member.getContents();
+			if (contents instanceof TemplateDeclaration) {
+				TemplateDeclaration decl = (TemplateDeclaration) contents;
 				System.out.println("(" + decl.getAttributes() + ") ::= <<");
 				System.out.println(decl.getDefinition().getTemplate());
 				System.out.println(">>");
 			} else if (member instanceof DictionaryDeclaration) {
-				DictionaryDeclaration decl = (DictionaryDeclaration) body;
+				DictionaryDeclaration decl = (DictionaryDeclaration) contents;
 				System.out.println("[");
-				for (DictPair pair : decl.getPairs()) {
-					System.out.println(pair.getKey().getContents() + " = "
+				for (Pair pair : decl.getPairs()) {
+					System.out.println(pair.getKey().getElements() + " = "
 							+ pair.getDefinition().getTemplate());
 				}
 				System.out.println("]");

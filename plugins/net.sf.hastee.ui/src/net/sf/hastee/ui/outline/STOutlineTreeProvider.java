@@ -19,8 +19,8 @@
  */
 package net.sf.hastee.ui.outline;
 
+import net.sf.hastee.st.Declaration;
 import net.sf.hastee.st.Group;
-import net.sf.hastee.st.TopDeclaration;
 
 import org.eclipse.xtext.ui.editor.outline.IOutlineNode;
 import org.eclipse.xtext.ui.editor.outline.impl.DefaultOutlineTreeProvider;
@@ -41,7 +41,7 @@ public class STOutlineTreeProvider extends DefaultOutlineTreeProvider {
 	 *            group
 	 */
 	protected void _createNode(IOutlineNode parentNode, Group group) {
-		for (TopDeclaration object : group.getMembers()) {
+		for (Declaration object : group.getMembers()) {
 			createNode(parentNode, object);
 		}
 	}
@@ -53,7 +53,7 @@ public class STOutlineTreeProvider extends DefaultOutlineTreeProvider {
 	 * @param namedObject
 	 * @return <code>true</code>
 	 */
-	protected boolean _isLeaf(TopDeclaration namedObject) {
+	protected boolean _isLeaf(Declaration namedObject) {
 		return true;
 	}
 

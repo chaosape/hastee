@@ -20,11 +20,15 @@
 package net.sf.hastee.ui.editor;
 
 import static net.sf.hastee.ui.editor.STHighlightingConfiguration.TEMPLATE_NAME;
-import static org.eclipse.xtext.nodemodel.util.NodeModelUtils.findActualNodeFor;
-import net.sf.hastee.st.TopDeclaration;
 
-import org.eclipse.emf.ecore.EObject;
+import java.util.List;
+
+import net.sf.hastee.st.Declaration;
+import net.sf.hastee.st.Group;
+import net.sf.hastee.st.StPackage;
+
 import org.eclipse.xtext.nodemodel.INode;
+import org.eclipse.xtext.nodemodel.util.NodeModelUtils;
 import org.eclipse.xtext.resource.XtextResource;
 import org.eclipse.xtext.ui.editor.syntaxcoloring.IHighlightedPositionAcceptor;
 import org.eclipse.xtext.ui.editor.syntaxcoloring.ISemanticHighlightingCalculator;
@@ -48,15 +52,13 @@ public class STSemanticHighlightingCalculator implements
 		}
 
 		INode root = resource.getParseResult().getRootNode();
-		for (INode node : root.getAsTreeIterable()) {
-			EObject eObject = node.getSemanticElement();
-			if (eObject instanceof TopDeclaration) {
-				TopDeclaration topDecl = (TopDeclaration) eObject;
-
-				INode decl = findActualNodeFor(topDecl.getDecl());
-				acceptor.addPosition(decl.getOffset(), decl.getLength(),
-						TEMPLATE_NAME);
-			}
+		Group group = (Group) root.getSemanticElement();
+		for (Declaration member : group.getMembers()) {
+			List<INode> nodes = NodeModelUtils.findNodesForFeature(member,
+					StPackage.eINSTANCE.getDeclaration_Name());
+			INode decl = nodes.get(0);
+			acceptor.addPosition(decl.getOffset(), decl.getLength(),
+					TEMPLATE_NAME);
 		}
 	}
 

@@ -19,8 +19,8 @@
  */
 package net.sf.hastee.ui.labeling;
 
+import net.sf.hastee.st.Declaration;
 import net.sf.hastee.st.Group;
-import net.sf.hastee.st.TopDeclaration;
 
 import org.eclipse.emf.edit.ui.provider.AdapterFactoryLabelProvider;
 import org.eclipse.xtext.ui.label.DefaultEObjectLabelProvider;
@@ -40,17 +40,17 @@ public class STLabelProvider extends DefaultEObjectLabelProvider {
 		super(delegate);
 	}
 
-	public String image(TopDeclaration decl) {
+	public String image(Declaration decl) {
 		return "template.gif";
+	}
+
+	public String text(Declaration decl) {
+		return decl.getName();
 	}
 
 	public String text(Group group) {
 		String[] segments = group.eResource().getURI().segments();
 		return segments[segments.length - 1];
-	}
-
-	public String text(TopDeclaration decl) {
-		return decl.getDecl().getName();
 	}
 
 }

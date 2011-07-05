@@ -20,15 +20,14 @@
 package net.sf.hastee.scoping;
 
 import net.sf.hastee.st.Declaration;
-import net.sf.hastee.st.DeclarationBody;
 import net.sf.hastee.st.ExprReference;
 import net.sf.hastee.st.Group;
 import net.sf.hastee.st.TemplateAnonymous;
 import net.sf.hastee.st.TemplateDeclaration;
-import net.sf.hastee.st.TopDeclaration;
 
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.EReference;
+import org.eclipse.xtext.EcoreUtil2;
 import org.eclipse.xtext.scoping.IScope;
 import org.eclipse.xtext.scoping.Scopes;
 import org.eclipse.xtext.scoping.impl.AbstractDeclarativeScopeProvider;
@@ -41,16 +40,12 @@ import org.eclipse.xtext.scoping.impl.AbstractDeclarativeScopeProvider;
 public class STScopeProvider extends AbstractDeclarativeScopeProvider {
 
 	public IScope scope_Arg_attribute(ExprReference expr, EReference reference) {
-		Declaration declaration = expr.getObjRef();
-		EObject cter = declaration.eContainer();
-		if (cter instanceof TopDeclaration) {
-			TopDeclaration topDecl = (TopDeclaration) cter;
-			DeclarationBody body = topDecl.getBody();
-			if (body instanceof TemplateDeclaration) {
-				TemplateDeclaration tmplDecl = (TemplateDeclaration) body;
-				IScope scope = Scopes.scopeFor(tmplDecl.getAttributes());
-				return scope;
-			}
+		Declaration declaration = expr.getTarget();
+		EObject contents = declaration.getContents();
+		if (contents instanceof TemplateDeclaration) {
+			TemplateDeclaration tmplDecl = (TemplateDeclaration) contents;
+			IScope scope = Scopes.scopeFor(tmplDecl.getAttributes());
+			return scope;
 		}
 		return IScope.NULLSCOPE;
 	}
@@ -64,11 +59,14 @@ public class STScopeProvider extends AbstractDeclarativeScopeProvider {
 
 	public IScope scope_ExprAttribute_attribute(TemplateDeclaration decl,
 			EReference reference) {
-		Group group = (Group) decl.eContainer().eContainer();
+		Group group = EcoreUtil2.getContainerOfType(decl, Group.class);
 		InverseCallGraph icg = InverseCallGraph.getICG(group);
 		TemplateDeclaration caller = icg.getCaller(decl);
 		IScope outer = (caller == null) ? IScope.NULLSCOPE : getScope(caller,
 				reference);
+		if (caller != null) {
+			System.out.println(((Declaration) caller.eContainer()).getName());
+		}
 		IScope scope = Scopes.scopeFor(decl.getAttributes(), outer);
 		return scope;
 	}

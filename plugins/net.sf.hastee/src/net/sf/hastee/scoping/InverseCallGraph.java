@@ -29,11 +29,9 @@ import java.util.Stack;
 import java.util.WeakHashMap;
 
 import net.sf.hastee.st.Declaration;
-import net.sf.hastee.st.DeclarationBody;
 import net.sf.hastee.st.ExprReference;
 import net.sf.hastee.st.Group;
 import net.sf.hastee.st.TemplateDeclaration;
-import net.sf.hastee.st.TopDeclaration;
 
 import org.eclipse.emf.common.util.TreeIterator;
 import org.eclipse.emf.ecore.EObject;
@@ -84,10 +82,10 @@ public class InverseCallGraph {
 	 *            a group
 	 */
 	public void build(Group group) {
-		for (TopDeclaration topDecl : group.getMembers()) {
-			DeclarationBody body = topDecl.getBody();
-			if (body instanceof TemplateDeclaration) {
-				TemplateDeclaration tmplDecl = (TemplateDeclaration) body;
+		for (Declaration topDecl : group.getMembers()) {
+			EObject contents = topDecl.getContents();
+			if (contents instanceof TemplateDeclaration) {
+				TemplateDeclaration tmplDecl = (TemplateDeclaration) contents;
 				callStack = new Stack<TemplateDeclaration>();
 				visit(tmplDecl);
 			}
@@ -140,13 +138,11 @@ public class InverseCallGraph {
 		StringBuilder builder = new StringBuilder();
 		for (Entry<TemplateDeclaration, Set<TemplateDeclaration>> entry : callersMap
 				.entrySet()) {
-			Declaration callee = ((TopDeclaration) entry.getKey().eContainer())
-					.getDecl();
+			Declaration callee = (Declaration) entry.getKey().eContainer();
 			builder.append(callee.getName());
 			builder.append(" <- ");
 			for (TemplateDeclaration caller : entry.getValue()) {
-				builder.append(((TopDeclaration) caller.eContainer()).getDecl()
-						.getName());
+				builder.append((Declaration) caller.eContainer());
 				builder.append(" ");
 			}
 			builder.append('\n');
@@ -171,23 +167,18 @@ public class InverseCallGraph {
 			EObject eObject = it.next();
 			if (eObject instanceof ExprReference) {
 				ExprReference exprRef = (ExprReference) eObject;
-				Declaration decl = exprRef.getObjRef();
-				EObject cter = decl.eContainer();
-				if (cter instanceof TopDeclaration) {
-					TopDeclaration topDecl = (TopDeclaration) cter;
-					DeclarationBody body = topDecl.getBody();
-					if (body instanceof TemplateDeclaration) {
-						TemplateDeclaration callee = (TemplateDeclaration) body;
-						Set<TemplateDeclaration> callers = callersMap
-								.get(callee);
-						if (callers == null) {
-							callers = new HashSet<TemplateDeclaration>();
-							callersMap.put(callee, callers);
-						}
-
-						callers.add(caller);
-						visit(callee);
+				Declaration decl = exprRef.getTarget();
+				EObject contents = decl.getContents();
+				if (contents instanceof TemplateDeclaration) {
+					TemplateDeclaration callee = (TemplateDeclaration) contents;
+					Set<TemplateDeclaration> callers = callersMap.get(callee);
+					if (callers == null) {
+						callers = new HashSet<TemplateDeclaration>();
+						callersMap.put(callee, callers);
 					}
+
+					callers.add(caller);
+					visit(callee);
 				}
 			}
 		}
