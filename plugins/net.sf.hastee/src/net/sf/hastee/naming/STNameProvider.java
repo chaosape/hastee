@@ -36,7 +36,7 @@ import org.eclipse.xtext.naming.QualifiedName;
 public class STNameProvider extends DefaultDeclarativeQualifiedNameProvider {
 
 	public QualifiedName qualifiedName(Declaration decl) {
-		return null; // getConverter().toQualifiedName(decl.getName());
+		return null;
 	}
 
 	public QualifiedName qualifiedName(Option option) {
