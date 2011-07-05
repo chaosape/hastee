@@ -62,8 +62,8 @@ public class STScopeProvider extends AbstractDeclarativeScopeProvider {
 		Group group = EcoreUtil2.getContainerOfType(decl, Group.class);
 		CallGraph icg = CallGraph.getCallGraph(group);
 		EObject caller = icg.getCaller(decl);
-		IScope outer = (caller == null) ? IScope.NULLSCOPE : getScope(caller,
-				reference);
+		IScope outer = (caller == null) ? delegateGetScope(decl, reference)
+				: getScope(caller, reference);
 		IScope scope = Scopes.scopeFor(decl.getAttributes(), outer);
 		return scope;
 	}
