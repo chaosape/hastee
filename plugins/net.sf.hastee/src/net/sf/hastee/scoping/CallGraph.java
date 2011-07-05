@@ -43,26 +43,26 @@ import org.eclipse.emf.ecore.EObject;
  * @author Matthieu Wipliez
  * 
  */
-public class InverseCallGraph {
+public class CallGraph {
 
-	private static final Map<Group, InverseCallGraph> map = new WeakHashMap<Group, InverseCallGraph>();
+	private static final Map<Group, CallGraph> map = new WeakHashMap<Group, CallGraph>();
 
 	/**
-	 * Returns the inverse call graph associated with the given group. The call
-	 * graph is constructed on-the-fly.
+	 * Returns the call graph associated with the given group. The call graph is
+	 * constructed on-the-fly.
 	 * 
 	 * @param group
 	 *            a group
-	 * @return the inverse call graph associated with the given group
+	 * @return the call graph associated with the given group
 	 */
-	public static InverseCallGraph getICG(Group group) {
-		InverseCallGraph icg = map.get(group);
-		if (icg == null) {
-			icg = new InverseCallGraph();
-			icg.build(group);
-			map.put(group, icg);
+	public static CallGraph getCallGraph(Group group) {
+		CallGraph cg = map.get(group);
+		if (cg == null) {
+			cg = new CallGraph();
+			cg.build(group);
+			map.put(group, cg);
 		}
-		return icg;
+		return cg;
 	}
 
 	private Map<TemplateDeclaration, Set<TemplateDeclaration>> calleesMap;
@@ -72,9 +72,9 @@ public class InverseCallGraph {
 	private Deque<TemplateDeclaration> callStack;
 
 	/**
-	 * Creates a new empty inverse call graph.
+	 * Creates a new empty call graph.
 	 */
-	public InverseCallGraph() {
+	public CallGraph() {
 		calleesMap = new HashMap<TemplateDeclaration, Set<TemplateDeclaration>>();
 		callersMap = new HashMap<TemplateDeclaration, Set<TemplateDeclaration>>();
 	}
@@ -102,7 +102,7 @@ public class InverseCallGraph {
 	}
 
 	/**
-	 * Builds the inverse call graph for the given group.
+	 * Builds the call graph for the given group.
 	 * 
 	 * @param group
 	 *            a group
@@ -147,8 +147,7 @@ public class InverseCallGraph {
 	}
 
 	/**
-	 * This method visits this inverse call graph and removes any simple cycle
-	 * that may exist.
+	 * This method visits this call graph and removes cycles.
 	 */
 	private void removeCycles(TemplateDeclaration caller) {
 		callStack.push(caller);
@@ -187,7 +186,7 @@ public class InverseCallGraph {
 	}
 
 	/**
-	 * Builds the inverse call graph for the given template declaration.
+	 * Visits the given template declaration and adds edges to this call graph.
 	 * 
 	 * @param caller
 	 *            a template declaration that may call other templates

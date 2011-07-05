@@ -60,7 +60,7 @@ public class STScopeProvider extends AbstractDeclarativeScopeProvider {
 	public IScope scope_ExprAttribute_attribute(TemplateDeclaration decl,
 			EReference reference) {
 		Group group = EcoreUtil2.getContainerOfType(decl, Group.class);
-		InverseCallGraph icg = InverseCallGraph.getICG(group);
+		CallGraph icg = CallGraph.getCallGraph(group);
 		TemplateDeclaration caller = icg.getCaller(decl);
 		IScope outer = (caller == null) ? IScope.NULLSCOPE : getScope(caller,
 				reference);
