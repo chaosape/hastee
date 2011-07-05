@@ -307,10 +307,22 @@ public class CustomSTLexer extends Lexer {
 	/** ML_COMMENT: '/' *' ( options {greedy=false;} : . )* '*' '/' */
 	private int mCommentML() {
 		input.consume();
-		while (!(input.LA(1) == '*' && input.LA(2) == '/')) {
+		int c = input.LA(1);
+		while (c != Token.EOF) {
+			if (c == '*') {
+				input.consume();
+				c = input.LA(1);
+				if (c == '/') {
+					input.consume();
+					return ML_COMMENT;
+				}
+				continue;
+			}
+
 			input.consume();
+			c = input.LA(1);
 		}
-		return ML_COMMENT;
+		return Token.EOF;
 	}
 
 	/** SL_COMMENT: '//' ~('\n'|'\r')* '\r'? '\n' */
