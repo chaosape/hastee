@@ -53,12 +53,14 @@ public class STSemanticHighlightingCalculator implements
 
 		INode root = resource.getParseResult().getRootNode();
 		Group group = (Group) root.getSemanticElement();
-		for (Declaration member : group.getMembers()) {
-			List<INode> nodes = NodeModelUtils.findNodesForFeature(member,
-					StPackage.eINSTANCE.getDeclaration_Name());
-			INode decl = nodes.get(0);
-			acceptor.addPosition(decl.getOffset(), decl.getLength(),
-					TEMPLATE_NAME);
+		if (group != null) {
+			for (Declaration member : group.getMembers()) {
+				List<INode> nodes = NodeModelUtils.findNodesForFeature(member,
+						StPackage.eINSTANCE.getDeclaration_Name());
+				INode decl = nodes.get(0);
+				acceptor.addPosition(decl.getOffset(), decl.getLength(),
+						TEMPLATE_NAME);
+			}
 		}
 	}
 
