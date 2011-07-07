@@ -33,6 +33,8 @@ import org.eclipse.emf.ecore.EClass;
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.EReference;
 import org.eclipse.emf.ecore.resource.Resource;
+import org.eclipse.emf.ecore.resource.ResourceSet;
+import org.eclipse.emf.ecore.resource.impl.ResourceSetImpl;
 import org.eclipse.xtext.linking.impl.DefaultLinkingService;
 import org.eclipse.xtext.nodemodel.INode;
 
@@ -90,14 +92,35 @@ public class StLinkingService extends DefaultLinkingService {
 	private List<EObject> getBuiltinDeclaration(EObject context, String name) {
 		Declaration declaration = declarations.get(name);
 		if (declaration != null) {
-			// Attach the stub to the resource that's being parsed
-			Resource res = makeResource(context.eResource());
+			Resource res = getBuiltinResource();
 			res.getContents().add(declaration);
 
 			return Collections.singletonList((EObject) declaration);
 		}
 
 		return Collections.emptyList();
+	}
+
+	/**
+	 * Returns the resource for built-in declarations, creating it if necessary.
+	 * 
+	 * @return the resource for built-in declarations
+	 */
+	private Resource getBuiltinResource() {
+		if (stubsResource != null) {
+			return stubsResource;
+		}
+
+		URI stubURI = URI.createPlatformPluginURI(
+				"/net.sf.hastee/src/net/sf/hastee/Builtin.java", true);
+
+		ResourceSet set = new ResourceSetImpl();
+		stubsResource = set.getResource(stubURI, false);
+		if (stubsResource == null) {
+			stubsResource = set.createResource(stubURI);
+		}
+
+		return stubsResource;
 	}
 
 	@Override
@@ -117,31 +140,6 @@ public class StLinkingService extends DefaultLinkingService {
 		}
 
 		return Collections.emptyList();
-	}
-
-	/**
-	 * Use a temporary 'child' resource to hold created stubs. The real resource
-	 * URI is used to generate a 'temporary' resource to be the container for
-	 * stub EObjects.
-	 * 
-	 * @param source
-	 *            the real resource that is being parsed
-	 * @return the cached reference to a resource named by the real resource
-	 *         with the added extension 'xmi'
-	 */
-	private Resource makeResource(Resource source) {
-		if (null != stubsResource)
-			return stubsResource;
-		URI stubURI = source.getURI().appendFileExtension("xmi");
-
-		stubsResource = source.getResourceSet().getResource(stubURI, false);
-		if (null == stubsResource) {
-			// TODO find out if this should be cleaned up so as not to clutter
-			// the project.
-			stubsResource = source.getResourceSet().createResource(stubURI);
-		}
-
-		return stubsResource;
 	}
 
 }
