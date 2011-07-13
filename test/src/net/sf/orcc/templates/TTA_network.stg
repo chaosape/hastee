@@ -32,7 +32,7 @@ entity top is
       hw_clk : in  std_logic;
       button : in  std_logic_vector(1 to 1);
       st2clk : out std_logic;
-      leds   : out std_logic_vector(8 downto 0)
+      leds   : out std_logic_vector(7 downto 0)
       );
 end top;
 
@@ -50,18 +50,6 @@ architecture bdf_type of top is
          data			: in  std_logic_vector(31 downto 0);
          q				: out std_logic_vector(31 downto 0);
          status			: out std_logic_vector(8 downto 0)
-         );
-  end component;
-
-  component mainpll
-    port(inclk0			: in  std_logic;
-         c0				: out std_logic
-         );
-  end component;
-
-  component clock_div
-    port(inclk0 		: in  std_logic;
-         c0     		: out std_logic
          );
   end component;
 
@@ -84,7 +72,6 @@ architecture bdf_type of top is
   -- Signals declaration
   ---------------------------------------------------------------------------
   -- System
-  signal system_clock   : std_logic;
   signal system_vcc     : std_logic;
   signal system_reset_n : std_logic;
   
@@ -98,19 +85,11 @@ begin
   --------------------------------------------------------------------------- 
   system_vcc \<= '1';
 
-  mainpll_inst : mainpll
-    port map(inclk0 =\> hw_clk,
-             c0     =\> system_clock);
-
-  st_clock_inst : clock_div
-    port map(inclk0 =\> system_clock,
-             c0     =\> st2clk);
-
   reset_debouncer : button_debouncer
     generic map(counter_max =\> 100000,
                 preset_val  =\> 0
                 )
-    port map(clk      =\> system_clock,
+    port map(clk      =\> hw_clk,
              rst_n    =\> system_vcc,
              data_in  =\> button(1),
              data_out =\> system_reset_n);
@@ -150,10 +129,8 @@ end component;<
 elseif(instance.broadcast)
 >component processor_<instance.id>
   port(clk			: in  std_logic;
-       data_0_in		: in  std_logic_vector(31 downto 0);
-       status_0_in	: in  std_logic_vector(8 downto 0);
-       ack_0_in		: out std_logic;
-       <instance.broadcast.outputList: { index | <outputPortBroadcast(index)> }; separator="\n">
+       <instance.broadcast.inputs.list: inputPort(); separator="\n">
+       <instance.broadcast.outputs.list: outputPort(); separator="\n">
        reset_n		: in  std_logic
        );
 end component;<
@@ -172,14 +149,12 @@ status_<indexPort(port)>_out	: in  std_logic_vector(8 downto 0);
 dv_<indexPort(port)>_out		: out std_logic;
 >>
 
-outputPortBroadcast(index) ::= <<
-data_<index>_out		: out std_logic_vector(31 downto 0);
-status_<index>_out	: in  std_logic_vector(8 downto 0);
-dv_<index>_out		: out std_logic;
->>
-
 indexPort(port) ::= <<
-<instance.actor.templateData.portToIndexMap.(port)>
+<if(instance.actor)
+><instance.actor.templateData.portToIndexMap.(port)><
+elseif(instance.broadcast)
+><instance.broadcast.portMap.(port)><
+endif>
 >>
 
 
@@ -199,7 +174,6 @@ instanceSignals(instance, incomingMap, outgoingMap) ::= <<
 
 inputPortSignals(port, connection) ::= <<
 ---- Input port: <port.name>
-signal fifo_<indexFifo(connection)>_clk		: std_logic;
 signal fifo_<indexFifo(connection)>_wrreq		: std_logic;
 signal fifo_<indexFifo(connection)>_data		: std_logic_vector(31 downto 0);
 >>
@@ -228,7 +202,7 @@ assignFifo(connection) ::= <<
 fifo_<indexFifo(connection)> : tta_fifo
   port map(wrreq   =\> fifo_<indexFifo(connection)>_wrreq,
            reset_n =\> system_reset_n,
-           clk     =\> system_clock,
+           clk     =\> hw_clk,
            rdreq   =\> fifo_<indexFifo(connection)>_rdreq,
            data    =\> fifo_<indexFifo(connection)>_data,
            q       =\> fifo_<indexFifo(connection)>_q,
@@ -241,31 +215,31 @@ assignInstances(instances) ::= <<
 
 assignInstance(instance) ::= <<
 <instance.id>_inst : processor_<instance.id>
-  port map(clk          =\> system_clock,
+  port map(clk          =\> hw_clk,
            <assignPorts(instance)>
            reset_n      =\> system_reset_n);
 >>
 
 assignPorts(instance) ::= <<
 <if(instance.actor)
-><instance.actor.inputs: { input | <assignInputPort(port=input, index={<indexPort(input)>})> }; separator="\n">
-<instance.actor.outputs: { output | <assignOutputPort(port=output, index={<indexPort(output)>})> }; separator="\n"><
+><instance.actor.inputs: assignInputPort(); separator="\n">
+<instance.actor.outputs: assignOutputPort(); separator="\n"><
 elseif(instance.broadcast)
-><assignInputPort(instance.broadcast.input, "0")>
-<instance.broadcast.outputs.list: { output | <assignOutputPort(output, i0)> }; separator="\n"><
+><instance.broadcast.inputs.list: assignInputPort(); separator="\n">
+<instance.broadcast.outputs.list: assignOutputPort(); separator="\n"><
 endif>
 >>
 
-assignInputPort(port, index) ::= <<
-data_<index>_in    =\> fifo_<indexInputFifo(port)>_q,
-status_<index>_in  =\> fifo_<indexInputFifo(port)>_status,
-ack_<index>_in     =\> fifo_<indexInputFifo(port)>_rdreq,
+assignInputPort(port) ::= <<
+data_<indexPort(port)>_in    =\> fifo_<indexInputFifo(port)>_q,
+status_<indexPort(port)>_in  =\> fifo_<indexInputFifo(port)>_status,
+ack_<indexPort(port)>_in     =\> fifo_<indexInputFifo(port)>_rdreq,
 >>
 
-assignOutputPort(port, index) ::= <<
-data_<index>_out   =\> fifo_<indexOutputFifo(port)>_data,
-status_<index>_out =\> fifo_<indexOutputFifo(port)>_status,
-dv_<index>_out     =\> fifo_<indexOutputFifo(port)>_wrreq,
+assignOutputPort(port) ::= <<
+data_<indexPort(port)>_out   =\> fifo_<indexOutputFifo(port)>_data,
+status_<indexPort(port)>_out =\> fifo_<indexOutputFifo(port)>_status,
+dv_<indexPort(port)>_out     =\> fifo_<indexOutputFifo(port)>_wrreq,
 >>
 
 indexInputFifo(port) ::= <<

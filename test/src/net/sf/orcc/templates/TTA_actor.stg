@@ -177,8 +177,9 @@ actionTest(action) ::= <<
 	br i1 %is_fireable_<action.name>, label %bb_<action.name>_check_outputs, label %bb_<action.name>_unschedulable<
 else
 >	;; Empty input pattern
+	%is_fireable_<action.name> = call i1 @<action.scheduler.name> ()
 	
-	br label %bb_<action.name>_check_outputs<
+	br i1 %is_fireable_<action.name>, label %bb_<action.name>_check_outputs, label %bb_<action.name>_unschedulable<
 endif>
 
 
@@ -226,8 +227,9 @@ actionTestState(sourceState, transition, restTransitionsList) ::= <<
 	br i1 %is_fireable_<sourceState.name>_<transition.action.name>, label %bb_<sourceState.name>_<transition.action.name>_check_outputs, label %bb_<sourceState.name>_<transition.action.name>_unschedulable<
 else
 >	;; Empty input pattern
+	%is_fireable_<sourceState.name>_<transition.action.name> = call i1 @<transition.action.scheduler.name> ()
 	
-	br label %bb_<sourceState.name>_<transition.action.name>_check_outputs<
+	br i1 %is_fireable_<sourceState.name>_<transition.action.name>, label %bb_<sourceState.name>_<transition.action.name>_check_outputs, label %bb_<sourceState.name>_<transition.action.name>_unschedulable<
 endif>
 
 
@@ -332,6 +334,10 @@ entry:
 <endif>
 	ret void
 }
+>>
+
+callInitialize(initialize) ::= <<
+call <initialize.body.returnType> @<initialize.body.name> ()
 >>
 
 
@@ -459,6 +465,7 @@ actor(actor) ::= <<
 
 define void @main() noreturn nounwind noinline {
 entry:
+	<actor.initializes: callInitialize(); separator="\n">
 
 	br label %bb_scheduler_start
 bb_scheduler_start:
