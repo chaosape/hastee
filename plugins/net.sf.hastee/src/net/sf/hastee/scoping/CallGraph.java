@@ -33,12 +33,20 @@ import net.sf.hastee.st.Declaration;
 import net.sf.hastee.st.DictionaryDeclaration;
 import net.sf.hastee.st.ExprReference;
 import net.sf.hastee.st.Group;
+import net.sf.hastee.st.StPackage;
 import net.sf.hastee.st.TemplateAnonymous;
 import net.sf.hastee.st.TemplateDeclaration;
 
 import org.eclipse.emf.common.util.TreeIterator;
 import org.eclipse.emf.ecore.EObject;
+import org.eclipse.emf.ecore.EReference;
+import org.eclipse.emf.ecore.util.EcoreUtil;
 import org.eclipse.xtext.EcoreUtil2;
+import org.eclipse.xtext.resource.IEObjectDescription;
+import org.eclipse.xtext.scoping.IGlobalScopeProvider;
+import org.eclipse.xtext.scoping.IScope;
+
+import com.google.common.base.Function;
 
 /**
  * This class defines methods to compute the call graph of each template.
@@ -58,13 +66,14 @@ public class CallGraph {
 	 *            a group
 	 * @return the call graph associated with the given group
 	 */
-	public static CallGraph getCallGraph(Group group) {
+	public static CallGraph getCallGraph(Group group,
+			IGlobalScopeProvider scopeProvider) {
 		// at most one access on the map
 		// because Xtext spawns one build thread + one validation thread
 		synchronized (map) {
 			CallGraph cg = map.get(group);
 			if (cg == null) {
-				cg = new CallGraph();
+				cg = new CallGraph(scopeProvider);
 				cg.build(group);
 				map.put(group, cg);
 			}
@@ -79,11 +88,20 @@ public class CallGraph {
 	private Deque<EObject> callStack;
 
 	/**
+	 * used to store the overridden definition.
+	 */
+	private Map<String, Declaration> overrideMap;
+
+	private IGlobalScopeProvider scopeProvider;
+
+	/**
 	 * Creates a new empty call graph.
 	 */
-	public CallGraph() {
+	public CallGraph(IGlobalScopeProvider scopeProvider) {
 		calleesMap = new HashMap<EObject, Set<EObject>>();
 		callersMap = new HashMap<EObject, Set<EObject>>();
+		overrideMap = new HashMap<String, Declaration>();
+		this.scopeProvider = scopeProvider;
 	}
 
 	/**
@@ -115,20 +133,37 @@ public class CallGraph {
 	 *            a group
 	 */
 	private void build(Group group) {
+		// fill override map
 		for (Declaration topDecl : group.getMembers()) {
-			EObject contents = topDecl.getContents();
-			callStack = new ArrayDeque<EObject>();
-			visit(contents);
+			overrideMap.put(topDecl.getName(), topDecl);
 		}
 
-		for (Declaration topDecl : group.getMembers()) {
-			EObject contents = topDecl.getContents();
-			if (getCaller(contents) == null) {
-				// got a potential top
-				callStack = new ArrayDeque<EObject>();
-				removeCycles(contents);
-			}
-		}
+		// build (inverse) Call Graph
+		visitTemplateDeclarations(group,
+				new Function<TemplateDeclaration, Object>() {
+
+					@Override
+					public Object apply(TemplateDeclaration from) {
+						callStack = new ArrayDeque<EObject>();
+						visit(from);
+						return null;
+					}
+				});
+
+		// remove cycles
+		visitTemplateDeclarations(group,
+				new Function<TemplateDeclaration, Object>() {
+
+					@Override
+					public Object apply(TemplateDeclaration from) {
+						if (getCaller(from) == null) {
+							// got a potential top
+							callStack = new ArrayDeque<EObject>();
+							removeCycles(from);
+						}
+						return null;
+					}
+				});
 	}
 
 	/**
@@ -215,14 +250,18 @@ public class CallGraph {
 			if (eObject instanceof ExprReference) {
 				ExprReference exprRef = (ExprReference) eObject;
 				Declaration decl = exprRef.getTarget();
-				EObject contents = decl.getContents();
-				if (contents instanceof TemplateDeclaration) {
-					TemplateDeclaration callee = (TemplateDeclaration) contents;
+				EObject callee = decl.getContents();
+				if (callee instanceof TemplateDeclaration) {
+					if (overrideMap.containsKey(decl.getName())) {
+						decl = overrideMap.get(decl.getName());
+						callee = decl.getContents();
+					}
+
 					add(calleesMap, caller, callee);
 					add(callersMap, callee, caller);
 
 					visit(callee);
-				} else if (contents instanceof DictionaryDeclaration) {
+				} else if (callee instanceof DictionaryDeclaration) {
 					System.err.println("dict");
 				}
 			} else if (eObject instanceof TemplateAnonymous) {
@@ -240,6 +279,31 @@ public class CallGraph {
 		}
 
 		callStack.pop();
+	}
+
+	private void visitTemplateDeclarations(Group group,
+			Function<TemplateDeclaration, Object> function) {
+		EReference reference = StPackage.eINSTANCE.getGroup_Members();
+		IScope scope = scopeProvider.getScope(group.eResource(), reference,
+				null);
+		for (IEObjectDescription desc : scope.getAllElements()) {
+			if (desc.getEClass() == StPackage.eINSTANCE.getDeclaration()) {
+				EObject proxy = desc.getEObjectOrProxy();
+				EObject eObj = EcoreUtil.resolve(proxy, group);
+				Declaration decl = (Declaration) eObj;
+				EObject contents = decl.getContents();
+				if (contents instanceof TemplateDeclaration) {
+					function.apply((TemplateDeclaration) contents);
+				}
+			}
+		}
+
+		for (Declaration decl : group.getMembers()) {
+			EObject contents = decl.getContents();
+			if (contents instanceof TemplateDeclaration) {
+				function.apply((TemplateDeclaration) contents);
+			}
+		}
 	}
 
 }
