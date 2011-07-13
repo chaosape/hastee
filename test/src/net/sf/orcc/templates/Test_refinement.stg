@@ -1,0 +1,7 @@
+import "net/sf/orcc/templates/Test.stg"
+
+
+sub2() ::= <<
+<sub1(y)>
+>>
+

@@ -1,6 +1,10 @@
 /**/
 /***/
 
+sub1() ::= <<
+<if (y)><sub2()><endif>
+>>
+
 w ::= [
 	"a":
 <<
@@ -8,17 +12,13 @@ w ::= [
 >>
 ]
 
-sub1(x) ::= <<
-<if (x)><sub2()><endif>
->>
-
 sub2() ::= <<
-<if (!x)><sub1(x)><endif>
+<if (!y)><sub1()><endif>
 >>
 
 top(y) ::= <<
 <w>
-<sub1(x=y)>
+<sub1()>
 <y: {tr | <i0> <schedulerFSM()>}>
 >>
 
