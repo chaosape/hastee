@@ -44,7 +44,7 @@ public class STScopeProvider extends AbstractDeclarativeScopeProvider {
 
 	@Inject
 	private IGlobalScopeProvider provider;
-	
+
 	public IScope scope_Arg_attribute(ExprReference expr, EReference reference) {
 		Declaration declaration = expr.getTarget();
 		EObject contents = declaration.getContents();

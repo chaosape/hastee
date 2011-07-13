@@ -21,10 +21,14 @@ package net.sf.hastee.scoping;
 
 import java.lang.ref.WeakReference;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
@@ -100,6 +104,8 @@ public class CallGraph {
 	 */
 	private Map<String, Declaration> overrideMap;
 
+	private Map<EObject, Integer> rankMap;
+
 	private IGlobalScopeProvider scopeProvider;
 
 	/**
@@ -109,6 +115,7 @@ public class CallGraph {
 		calleesMap = new HashMap<EObject, Set<EObject>>();
 		callersMap = new HashMap<EObject, Set<EObject>>();
 		overrideMap = new HashMap<String, Declaration>();
+		rankMap = new HashMap<EObject, Integer>();
 		this.scopeProvider = scopeProvider;
 	}
 
@@ -183,11 +190,49 @@ public class CallGraph {
 	 *         template is never called
 	 */
 	public EObject getCaller(EObject callee) {
-		Set<EObject> callers = callersMap.get(callee);
-		if (callers == null || callers.isEmpty()) {
+		List<EObject> list = getList(callersMap, callee);
+		int size = list.size();
+		if (size == 0) {
 			return null;
+		} else {
+			// quick and dirty, but "works"
+			return list.get(size - 1);
 		}
-		return callers.iterator().next();
+	}
+
+	/**
+	 * Returns the list of objects associated with a given object, sorted by
+	 * position in the document.
+	 * 
+	 * @param map
+	 *            a map
+	 * @param source
+	 *            source object
+	 * @return a list
+	 */
+	private List<EObject> getList(Map<EObject, Set<EObject>> map, EObject source) {
+		Set<EObject> set = map.get(source);
+		if (set == null) {
+			return Collections.emptyList();
+		}
+
+		// sort by position in the document
+		List<EObject> list = new ArrayList<EObject>(set);
+		Collections.sort(list, new Comparator<EObject>() {
+
+			@Override
+			public int compare(EObject o1, EObject o2) {
+				Integer r1 = rankMap.get(o1);
+				Integer r2 = rankMap.get(o2);
+				if (r1 != null && r2 != null) {
+					return r1.compareTo(r2);
+				} else {
+					return 0;
+				}
+			}
+
+		});
+		return list;
 	}
 
 	/**
@@ -195,18 +240,16 @@ public class CallGraph {
 	 */
 	private void removeCycles(EObject caller) {
 		callStack.push(caller);
-		Set<EObject> callees = calleesMap.get(caller);
-		if (callees != null) {
-			Iterator<EObject> it = callees.iterator();
-			while (it.hasNext()) {
-				EObject callee = it.next();
-				if (callStack.contains(callee)) {
-					it.remove();
-					Set<EObject> callers = callersMap.get(callee);
-					callers.remove(caller);
-				} else {
-					removeCycles(callee);
-				}
+		List<EObject> callees = getList(calleesMap, caller);
+		Iterator<EObject> it = callees.iterator();
+		while (it.hasNext()) {
+			EObject callee = it.next();
+			if (callStack.contains(callee)) {
+				it.remove();
+				Set<EObject> callers = callersMap.get(callee);
+				callers.remove(caller);
+			} else {
+				removeCycles(callee);
 			}
 		}
 		callStack.pop();
@@ -289,11 +332,21 @@ public class CallGraph {
 		callStack.pop();
 	}
 
+	/**
+	 * Visits all elements provided by the global scope provider (so, outside of
+	 * the group), and then all elements of the group.
+	 * 
+	 * @param group
+	 *            the group
+	 * @param function
+	 *            the function to apply
+	 */
 	private void visitTemplateDeclarations(Group group,
 			Function<TemplateDeclaration, Object> function) {
 		EReference reference = StPackage.eINSTANCE.getGroup_Members();
 		IScope scope = scopeProvider.getScope(group.eResource(), reference,
 				null);
+		int rank = 0;
 		for (IEObjectDescription desc : scope.getAllElements()) {
 			if (desc.getEClass() == StPackage.eINSTANCE.getDeclaration()) {
 				EObject proxy = desc.getEObjectOrProxy();
@@ -301,6 +354,7 @@ public class CallGraph {
 				Declaration decl = (Declaration) eObj;
 				EObject contents = decl.getContents();
 				if (contents instanceof TemplateDeclaration) {
+					rankMap.put(contents, rank++);
 					function.apply((TemplateDeclaration) contents);
 				}
 			}
@@ -309,6 +363,7 @@ public class CallGraph {
 		for (Declaration decl : group.getMembers()) {
 			EObject contents = decl.getContents();
 			if (contents instanceof TemplateDeclaration) {
+				rankMap.put(contents, rank++);
 				function.apply((TemplateDeclaration) contents);
 			}
 		}
