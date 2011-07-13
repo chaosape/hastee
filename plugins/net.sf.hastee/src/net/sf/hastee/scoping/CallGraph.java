@@ -19,6 +19,7 @@
  */
 package net.sf.hastee.scoping;
 
+import java.lang.ref.WeakReference;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.HashMap;
@@ -56,7 +57,7 @@ import com.google.common.base.Function;
  */
 public class CallGraph {
 
-	private static final Map<Group, CallGraph> map = new WeakHashMap<Group, CallGraph>();
+	private static final Map<Group, WeakReference<CallGraph>> map = new WeakHashMap<Group, WeakReference<CallGraph>>();
 
 	/**
 	 * Returns the call graph associated with the given group. The call graph is
@@ -71,12 +72,19 @@ public class CallGraph {
 		// at most one access on the map
 		// because Xtext spawns one build thread + one validation thread
 		synchronized (map) {
-			CallGraph cg = map.get(group);
-			if (cg == null) {
-				cg = new CallGraph(scopeProvider);
-				cg.build(group);
-				map.put(group, cg);
+			WeakReference<CallGraph> ref = map.get(group);
+			if (ref != null) {
+				CallGraph cg = ref.get();
+				if (cg != null) {
+					return cg;
+				}
 			}
+
+			CallGraph cg = new CallGraph(scopeProvider);
+			cg.build(group);
+			ref = new WeakReference<CallGraph>(cg);
+			map.put(group, ref);
+
 			return cg;
 		}
 	}
