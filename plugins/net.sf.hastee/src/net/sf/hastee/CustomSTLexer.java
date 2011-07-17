@@ -468,7 +468,7 @@ public class CustomSTLexer extends Lexer {
 					return mIDOrKeyword(true);
 				}
 
-				RecognitionException re = new MismatchedTokenException(
+				MismatchedTokenException re = new MismatchedTokenException(
 						delimiterStopChar, input);
 				recover(re);
 				lexingState.pop(); // get out of expression
@@ -591,6 +591,21 @@ public class CustomSTLexer extends Lexer {
 
 	private int mTemplate() throws RecognitionException {
 		int c = input.LA(1);
+		if (bigString) {
+			// allows ST 4.0.2 "%>" template end
+			if ((c == '%' || c == '>') && input.LA(2) == '>') {
+				input.consume();
+				input.consume();
+				lexingState.pop();
+				return TMPL_END;
+			}
+		} else if (c == '"') {
+			// implied (bigString == false)
+			input.consume();
+			lexingState.pop();
+			return QUOTE;
+		}
+
 		if (c == delimiterStartChar) {
 			input.consume();
 			c = input.LA(1);
@@ -610,18 +625,6 @@ public class CustomSTLexer extends Lexer {
 			lexingState.pop(); // get out of template
 			subtemplateDepth--;
 			return RCURLY;
-		} else if (bigString) {
-			if (c == '>' && input.LA(2) == '>') {
-				input.consume();
-				input.consume();
-				lexingState.pop();
-				return TMPL_END;
-			}
-		} else if (c == '"') {
-			// implied (bigString == false)
-			input.consume();
-			lexingState.pop();
-			return QUOTE;
 		}
 
 		return mTEXT();
@@ -633,19 +636,22 @@ public class CustomSTLexer extends Lexer {
 		while (true) {
 			if (c == Token.EOF) {
 				return Token.EOF;
-			} else if (c == delimiterStartChar) {
-				break; // end of TEXT token
-			} else if (c == '}' && subtemplateDepth > 0) {
-				break; // end of TEXT token
-			} else if (c == '\\') {
-				input.consume(); // toss out \ char
 			} else if (bigString) {
-				if (c == '>' && input.LA(2) == '>') {
+				// allows ST 4.0.2 "%>" end of template
+				if ((c == '%' || c == '>') && input.LA(2) == '>') {
 					break; // end of TEXT token
 				}
 			} else if (c == '"') {
 				// implied (bigString == false)
 				break; // end of TEXT token
+			}
+
+			if (c == delimiterStartChar) {
+				break; // end of TEXT token
+			} else if (c == '}' && subtemplateDepth > 0) {
+				break; // end of TEXT token
+			} else if (c == '\\') {
+				input.consume(); // toss out \ char
 			}
 
 			input.consume();
@@ -659,7 +665,13 @@ public class CustomSTLexer extends Lexer {
 	private int mTmplBegin() throws RecognitionException {
 		bigString = true;
 		input.consume();
-		match('<');
+		// allows ST 4.0.2 "<%" for beginning a template
+		if (input.LA(1) == '%') {
+			input.consume();
+		} else {
+			// otherwise, match a '<'
+			match('<');
+		}
 		lexingState.push(LexingState.TEMPLATE);
 		return TMPL_BEGIN;
 	}

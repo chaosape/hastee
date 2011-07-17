@@ -60,7 +60,8 @@ Pair:
 	'"' key=Template '"' ':' definition = TemplateDef;
 
 TemplateDef:
-	(('<<' template = Template '>>')
+	( ('<<' template = Template '>>')
+	| ('<%' template = Template '%>') // new ST 4.0.2 "no newline" style 
 	| ('"' template = Template '"'));
 
 Template:
