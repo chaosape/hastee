@@ -2,19 +2,19 @@
 <feature
       id="net.sf.hastee.feature"
       label="Hastee StringTemplate Eclipse Editor"
-      version="0.3.0.v20110713">
+      version="0.3.1.v20110717">
 
    <description url="http://hastee.sf.net/">
       Hastee provides an editor for StringTemplate based on Xtext.
    </description>
 
    <copyright>
-Copyright (c) 2011, IETR/INSA of Rennes
+      Copyright (c) 2011, IETR/INSA of Rennes
 All rights reserved.
    </copyright>
 
    <license url="">
-Copyright (c) 2011, IETR/INSA of Rennes
+      Copyright (c) 2011, IETR/INSA of Rennes
 All rights reserved.
 
 This program is free software: you can redistribute it and/or
@@ -37,14 +37,14 @@ see &lt;http://www.gnu.org/licenses/&gt;.
          id="net.sf.hastee.ui"
          download-size="0"
          install-size="0"
-         version="0.3.0.v20110713"
+         version="0.3.1.v20110717"
          unpack="false"/>
 
    <plugin
          id="net.sf.hastee"
          download-size="0"
          install-size="0"
-         version="0.3.0.v20110713"
+         version="0.3.1.v20110717"
          unpack="false"/>
 
 </feature>
