@@ -1,0 +1,15 @@
+delimiters "%", "%"
+import "net/sf/orcc/templates/XLIM_sw_actor.stg"
+
+tmpl(x, y) ::= <<
+%actorPort(port=x, dir=y)%
+
+%hello%
+%xx%
+>>
+
+xx() ::= <<
+>>
+
+hello() ::= <<
+>>

@@ -24,11 +24,13 @@ generate st "http://www.sf.net/hastee/ST"
 
 // entry point
 Group:
+	{Group}
+	("delimiters" STRING "," STRING)?
 	(imports+=Import)*
 	(members+=GroupMember)*;
 
 Import:
-	'import' '"' uri=Template '"';
+	'import' uri=STRING;
 
 // top-level elements: TemplateNamed and Dictionary
 GroupMember returns Declaration:

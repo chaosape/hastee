@@ -52,7 +52,7 @@ import org.eclipse.xtext.parser.antlr.Lexer;
 public class CustomSTLexer extends Lexer {
 
 	private static enum LexingState {
-		EXPRESSION, GROUP, TEMPLATE, TEMPLATE_ANON
+		DELIMITERS, EXPRESSION, GROUP, IMPORTS, TEMPLATE, TEMPLATE_ANON
 	}
 
 	private static final int AND;
@@ -65,6 +65,8 @@ public class CustomSTLexer extends Lexer {
 
 	private static final int COMMA;
 
+	private static final int DELIMITERS;
+
 	private static final int DOT;
 
 	private static final int ELLIPSIS;
@@ -72,6 +74,8 @@ public class CustomSTLexer extends Lexer {
 	private static final int EQUALS;
 
 	private static final int ID;
+
+	private static final int IMPORT;
 
 	private static final Map<String, Integer> keywords;
 
@@ -152,15 +156,23 @@ public class CustomSTLexer extends Lexer {
 		WS = getTokenId(tokenMap, "RULE_WS");
 
 		keywords = new HashMap<String, Integer>();
-		keywords.put("default", getTokenId(tokenMap, "default"));
-		keywords.put("else", getTokenId(tokenMap, "else"));
-		keywords.put("elseif", getTokenId(tokenMap, "elseif"));
-		keywords.put("endif", getTokenId(tokenMap, "endif"));
-		keywords.put("false", getTokenId(tokenMap, "false"));
-		keywords.put("if", getTokenId(tokenMap, "if"));
-		keywords.put("import", getTokenId(tokenMap, "import"));
-		keywords.put("super", getTokenId(tokenMap, "super"));
-		keywords.put("true", getTokenId(tokenMap, "true"));
+		addKeyword(tokenMap, "default");
+		addKeyword(tokenMap, "else");
+		addKeyword(tokenMap, "elseif");
+		addKeyword(tokenMap, "endif");
+		addKeyword(tokenMap, "false");
+		addKeyword(tokenMap, "if");
+		addKeyword(tokenMap, "super");
+		addKeyword(tokenMap, "true");
+
+		DELIMITERS = addKeyword(tokenMap, "delimiters");
+		IMPORT = addKeyword(tokenMap, "import");
+	}
+
+	private static int addKeyword(Map<String, Integer> tokenMap, String kwd) {
+		int id = getTokenId(tokenMap, kwd);
+		keywords.put(kwd, id);
+		return id;
 	}
 
 	private static int getTokenId(Map<String, Integer> tokenMap, String name) {
@@ -218,9 +230,13 @@ public class CustomSTLexer extends Lexer {
 
 	private boolean bigString;
 
+	private int delimIndex;
+
 	private int delimiterStartChar = '<';
 
 	private int delimiterStopChar = '>';
+
+	private boolean endOfGroupHeader;
 
 	private Stack<LexingState> lexingState;
 
@@ -345,6 +361,37 @@ public class CustomSTLexer extends Lexer {
 		return SL_COMMENT;
 	}
 
+	/** matches comma, and two STRING before going back to group */
+	private int mDelimiters() throws RecognitionException {
+		int c = input.LA(1);
+		if (isWS(c)) {
+			return mWS();
+		} else {
+			switch (c) {
+			case ',':
+				input.consume();
+				return COMMA;
+
+			case '"': {
+				state.type = mSTRING();
+				Token delim = emit();
+				char delimChar = delim.getText().charAt(1);
+				if (delimIndex == 0) {
+					delimiterStartChar = delimChar;
+					delimIndex++;
+				} else {
+					delimiterStopChar = delimChar;
+					delimIndex = 0;
+					lexingState.pop(); // back to group
+				}
+				return state.type;
+			}
+			}
+		}
+
+		throw new NoViableAltException("mDelimiters", 0, state.type, input);
+	}
+
 	private int mExpression() throws RecognitionException {
 		while (true) {
 			int c = input.LA(1);
@@ -420,10 +467,11 @@ public class CustomSTLexer extends Lexer {
 				if (isIDStartLetter(c)) {
 					return mIDOrKeyword(true);
 				}
-				RecognitionException re = new NoViableAltException("", 0, 0,
-						input);
-				re.line = state.tokenStartLine;
-				re.charPositionInLine = state.tokenStartCharPositionInLine;
+
+				RecognitionException re = new MismatchedTokenException(
+						delimiterStopChar, input);
+				recover(re);
+				lexingState.pop(); // get out of expression
 				throw re;
 			}
 		}
@@ -434,8 +482,17 @@ public class CustomSTLexer extends Lexer {
 		if (isWS(c)) {
 			return mWS();
 		} else if (isIDStartLetter(c)) {
-			return mIDOrKeyword(true);
+			int token = mIDOrKeyword(true);
+			if (!endOfGroupHeader) {
+				if (token == DELIMITERS) {
+					lexingState.push(LexingState.DELIMITERS);
+				} else if (token == IMPORT) {
+					lexingState.push(LexingState.IMPORTS);
+				}
+			}
+			return token;
 		} else {
+			endOfGroupHeader = true;
 			switch (c) {
 			case '/':
 				return mComment();
@@ -500,6 +557,19 @@ public class CustomSTLexer extends Lexer {
 			}
 		}
 		return state.type;
+	}
+
+	/** matches a single STRING and goes back to group mode */
+	private int mImports() throws RecognitionException {
+		int c = input.LA(1);
+		if (isWS(c)) {
+			return mWS();
+		} else if (c == '"') {
+			lexingState.pop(); // back to group
+			return mSTRING();
+		}
+
+		throw new NoViableAltException("mImports", 0, state.type, input);
 	}
 
 	/** STRING : '"' ( '\\' '"' | '\\' ~'"' | ~('\\'|'"') )* '"' ; */
@@ -637,6 +707,14 @@ public class CustomSTLexer extends Lexer {
 		switch (topState) {
 		case GROUP:
 			state.type = mGroup();
+			break;
+
+		case DELIMITERS:
+			state.type = mDelimiters();
+			break;
+
+		case IMPORTS:
+			state.type = mImports();
 			break;
 
 		case TEMPLATE:

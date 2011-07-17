@@ -19,7 +19,6 @@
  */
 package net.sf.hastee.scoping;
 
-import net.sf.hastee.Util;
 import net.sf.hastee.st.Import;
 
 import org.eclipse.core.resources.IFile;
@@ -50,8 +49,7 @@ public class STImportUriResolver extends ImportUriResolver {
 	public String apply(EObject from) {
 		if (from instanceof Import) {
 			Import importObj = (Import) from;
-			String path = Util.toString(importObj.getUri());
-			return getURI(from.eResource(), path);
+			return getURI(from.eResource(), importObj.getUri());
 		}
 
 		return null;
