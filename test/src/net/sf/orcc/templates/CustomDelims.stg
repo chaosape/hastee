@@ -1,11 +1,9 @@
 delimiters "%", "%"
-import "net/sf/orcc/templates/XLIM_sw_actor.stg"
 
-tmpl(x, y) ::= <%
-%actorPort(port=x, dir=y)%
+tmpl(x, yy) ::= <%
 
-%hello%
-%xx%
+%hello(yy)%
+%xx()%
 %>
 
 xx() ::= <<
@@ -13,7 +11,9 @@ a
 b
 c
 d
+
 >>
 
-hello() ::= <<
->>
+hello(y) ::= <%
+%yy%
+%>

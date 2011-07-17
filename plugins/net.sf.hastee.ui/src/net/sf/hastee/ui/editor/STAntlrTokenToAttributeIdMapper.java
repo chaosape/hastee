@@ -32,11 +32,9 @@ public class STAntlrTokenToAttributeIdMapper extends
 
 	@Override
 	protected String calculateId(String tokenName, int tokenType) {
-		if ("'<<'".equals(tokenName)) {
-			return STHighlightingConfiguration.SEPARATORS;
-		} else if ("'>>'".equals(tokenName)) {
-			return STHighlightingConfiguration.SEPARATORS;
-		} else if ("'::='".equals(tokenName)) {
+		if ("'<<'".equals(tokenName) || "'>>'".equals(tokenName)
+				|| "'<%'".equals(tokenName) || "'%>'".equals(tokenName)
+				|| "'::='".equals(tokenName)) {
 			return STHighlightingConfiguration.SEPARATORS;
 		}
 

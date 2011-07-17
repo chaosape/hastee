@@ -1,7 +1,7 @@
 Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
 Bundle-Name: net.sf.hastee.ui
-Bundle-Version: 0.3.1.v20110717
+Bundle-Version: 0.3.2.v20110717
 Bundle-SymbolicName: net.sf.hastee.ui; singleton:=true
 Bundle-ActivationPolicy: lazy
 Require-Bundle: net.sf.hastee;visibility:=reexport,

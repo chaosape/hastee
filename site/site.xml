@@ -15,5 +15,8 @@
    <feature url="features/net.sf.hastee.feature_0.3.1.v20110717.jar" id="net.sf.hastee.feature" version="0.3.1.v20110717">
       <category name="Hastee"/>
    </feature>
+   <feature url="features/net.sf.hastee.feature_0.3.2.v20110717.jar" id="net.sf.hastee.feature" version="0.3.2.v20110717">
+      <category name="Hastee"/>
+   </feature>
    <category-def name="Hastee" label="Hastee"/>
 </site>
