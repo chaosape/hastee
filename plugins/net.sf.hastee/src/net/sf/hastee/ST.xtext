@@ -160,18 +160,19 @@ Args:
 	args+=Arg (',' args+=Arg)*;
 
 Arg:
-	value=ExprNoComma
-	| bool='true'
-	| bool='false';
+	value = ExprNoComma;
 	
 
 // primary expression
 ExprPrimary:
 	ExprAttribute
+	| ExprBool
 	| ExprString
 	| ExprTemplateAnonymous
 	| ExprList
 	| ExprIndirect;
+
+ExprBool: bool='true' | bool='false';
 
 ExprAttribute:
 	attribute=[Declaration];
