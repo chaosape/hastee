@@ -29,10 +29,12 @@ import org.eclipse.xtext.ui.editor.utils.TextStyle;
  * This class defines the highlighting configuration for the ST editor.
  * 
  * @author Herve Yviquel
- * 
+ * @author Matthieu Wipliez
  */
 public class STHighlightingConfiguration extends
 		DefaultHighlightingConfiguration {
+
+	public static final String EXPRESSION = "Expression";
 
 	public static final String SEPARATORS = "Separators";
 
@@ -45,6 +47,14 @@ public class STHighlightingConfiguration extends
 				templateNameTextStyle());
 		acceptor.acceptDefaultHighlighting(SEPARATORS, "Template separators",
 				separatorsTextStyle());
+		acceptor.acceptDefaultHighlighting(EXPRESSION, "Template expression",
+				expressionTextStyle());
+	}
+
+	public TextStyle expressionTextStyle() {
+		TextStyle textStyle = new TextStyle();
+		textStyle.setStyle(SWT.ITALIC);
+		return textStyle;
 	}
 
 	public TextStyle separatorsTextStyle() {

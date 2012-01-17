@@ -19,14 +19,18 @@
  */
 package net.sf.hastee.ui.editor;
 
+import static net.sf.hastee.ui.editor.STHighlightingConfiguration.EXPRESSION;
 import static net.sf.hastee.ui.editor.STHighlightingConfiguration.TEMPLATE_NAME;
 
 import java.util.List;
 
 import net.sf.hastee.st.Declaration;
+import net.sf.hastee.st.ExpressionElement;
 import net.sf.hastee.st.Group;
 import net.sf.hastee.st.StPackage;
 
+import org.eclipse.emf.common.util.TreeIterator;
+import org.eclipse.emf.ecore.EObject;
 import org.eclipse.xtext.nodemodel.INode;
 import org.eclipse.xtext.nodemodel.util.NodeModelUtils;
 import org.eclipse.xtext.resource.XtextResource;
@@ -60,6 +64,22 @@ public class STSemanticHighlightingCalculator implements
 				INode decl = nodes.get(0);
 				acceptor.addPosition(decl.getOffset(), decl.getLength(),
 						TEMPLATE_NAME);
+			}
+
+			TreeIterator<EObject> it = group.eAllContents();
+			while (it.hasNext()) {
+				EObject object = it.next();
+				if (object instanceof ExpressionElement) {
+					ExpressionElement element = (ExpressionElement) object;
+					List<INode> nodes = NodeModelUtils.findNodesForFeature(
+							element, StPackage.eINSTANCE
+									.getExpressionElement_Expression());
+					for (INode node : nodes) {
+						acceptor.addPosition(node.getOffset(),
+								node.getLength(), EXPRESSION);
+					}
+					it.prune();
+				}
 			}
 		}
 	}
