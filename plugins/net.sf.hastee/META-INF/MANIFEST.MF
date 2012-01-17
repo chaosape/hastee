@@ -1,7 +1,7 @@
 Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
 Bundle-Name: net.sf.hastee
-Bundle-Version: 0.3.4.v20111003
+Bundle-Version: 0.3.5.v20120117
 Bundle-SymbolicName: net.sf.hastee; singleton:=true
 Bundle-ActivationPolicy: lazy
 Require-Bundle: com.ibm.icu;resolution:=optional,
@@ -28,4 +28,6 @@ Export-Package: net.sf.hastee,
  net.sf.hastee.parseTreeConstruction,
  net.sf.hastee.parser.antlr,
  net.sf.hastee.parser.antlr.internal,
- net.sf.hastee.validation
+ net.sf.hastee.validation,
+ net.sf.hastee.scoping,
+ net.sf.hastee.formatting
