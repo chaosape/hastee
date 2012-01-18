@@ -11,6 +11,7 @@
             default="true"
             extensions="st,stg"
             id="net.sf.hastee.ST"
+            icon="icons/st.gif"
             name="ST Editor">
         </editor>
     </extension>
