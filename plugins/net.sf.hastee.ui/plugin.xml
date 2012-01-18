@@ -6,13 +6,12 @@
     <extension
             point="org.eclipse.ui.editors">
         <editor
-              class="net.sf.hastee.ui.STExecutableExtensionFactory:org.eclipse.xtext.ui.editor.XtextEditor"
-              contributorClass="org.eclipse.ui.editors.text.TextEditorActionContributor"
-              default="true"
-              extensions="st,stg"
-              icon="icons/st.gif"
-              id="net.sf.hastee.ST"
-              name="ST Editor">
+            class="net.sf.hastee.ui.STExecutableExtensionFactory:org.eclipse.xtext.ui.editor.XtextEditor"
+            contributorClass="org.eclipse.ui.editors.text.TextEditorActionContributor"
+            default="true"
+            extensions="st,stg"
+            id="net.sf.hastee.ST"
+            name="ST Editor">
         </editor>
     </extension>
     <extension
@@ -151,7 +150,6 @@
             uriExtension="stg">
         </resourceServiceProvider>
     </extension>
-
 
 
 
