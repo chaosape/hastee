@@ -55,6 +55,11 @@ public class STRuntimeModule extends net.sf.hastee.AbstractSTRuntimeModule {
 	}
 
 	@Override
+	public Class<? extends Lexer> bindLexer() {
+		return CustomSTLexer.class;
+	}
+
+	@Override
 	public void configureRuntimeLexer(Binder binder) {
 		binder.bind(Lexer.class)
 				.annotatedWith(Names.named(LexerBindings.RUNTIME))
