@@ -19,20 +19,14 @@
  */
 package net.sf.hastee.ui;
 
-import net.sf.hastee.CustomSTLexer;
 import net.sf.hastee.ui.editor.STAntlrTokenToAttributeIdMapper;
 import net.sf.hastee.ui.editor.STHighlightingConfiguration;
 import net.sf.hastee.ui.editor.STSemanticHighlightingCalculator;
 
 import org.eclipse.ui.plugin.AbstractUIPlugin;
-import org.eclipse.xtext.parser.antlr.Lexer;
-import org.eclipse.xtext.ui.LexerUIBindings;
 import org.eclipse.xtext.ui.editor.syntaxcoloring.AbstractAntlrTokenToAttributeIdMapper;
 import org.eclipse.xtext.ui.editor.syntaxcoloring.IHighlightingConfiguration;
 import org.eclipse.xtext.ui.editor.syntaxcoloring.ISemanticHighlightingCalculator;
-
-import com.google.inject.Binder;
-import com.google.inject.name.Names;
 
 /**
  * Use this class to register components to be used within the IDE.
@@ -53,13 +47,6 @@ public class STUiModule extends net.sf.hastee.ui.AbstractSTUiModule {
 
 	public Class<? extends ISemanticHighlightingCalculator> bindISemanticHighlightingCalculator() {
 		return STSemanticHighlightingCalculator.class;
-	}
-
-	@Override
-	public void configureHighlightingLexer(Binder binder) {
-		binder.bind(Lexer.class)
-				.annotatedWith(Names.named(LexerUIBindings.HIGHLIGHTING))
-				.to(CustomSTLexer.class);
 	}
 
 }
