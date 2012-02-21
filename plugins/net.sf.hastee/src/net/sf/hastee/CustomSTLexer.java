@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2011, IETR/INSA of Rennes
+ * Copyright (c) 2012, Synflow
  * All rights reserved.
  * 
  * This file is part of Hastee.

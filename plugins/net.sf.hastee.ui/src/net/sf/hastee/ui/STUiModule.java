@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2011, IETR/INSA of Rennes
+ * Copyright (c) 2012, Synflow
  * All rights reserved.
  * 
  * This file is part of Hastee.
@@ -22,8 +23,10 @@ package net.sf.hastee.ui;
 import net.sf.hastee.ui.editor.STAntlrTokenToAttributeIdMapper;
 import net.sf.hastee.ui.editor.STHighlightingConfiguration;
 import net.sf.hastee.ui.editor.STSemanticHighlightingCalculator;
+import net.sf.hastee.ui.preferences.StPreferencePage;
 
 import org.eclipse.ui.plugin.AbstractUIPlugin;
+import org.eclipse.xtext.ui.editor.preferences.LanguageRootPreferencePage;
 import org.eclipse.xtext.ui.editor.syntaxcoloring.AbstractAntlrTokenToAttributeIdMapper;
 import org.eclipse.xtext.ui.editor.syntaxcoloring.IHighlightingConfiguration;
 import org.eclipse.xtext.ui.editor.syntaxcoloring.ISemanticHighlightingCalculator;
@@ -47,6 +50,10 @@ public class STUiModule extends net.sf.hastee.ui.AbstractSTUiModule {
 
 	public Class<? extends ISemanticHighlightingCalculator> bindISemanticHighlightingCalculator() {
 		return STSemanticHighlightingCalculator.class;
+	}
+
+	public Class<? extends LanguageRootPreferencePage> bindLanguageRootPreferencePage() {
+		return StPreferencePage.class;
 	}
 
 }
