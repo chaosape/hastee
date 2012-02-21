@@ -489,11 +489,14 @@ public class CustomSTLexer extends Lexer {
 					lexingState.push(LexingState.DELIMITERS);
 				} else if (token == IMPORT) {
 					lexingState.push(LexingState.IMPORTS);
+				} else {
+					// identifier other than delimiters/import means the header
+					// is over
+					endOfGroupHeader = true;
 				}
 			}
 			return token;
 		} else {
-			endOfGroupHeader = true;
 			switch (c) {
 			case '/':
 				return mComment();
