@@ -745,6 +745,9 @@ public class CustomSTLexer extends Lexer {
 		case TEMPLATE_ANON:
 			state.type = mAnonTemplate();
 			break;
+
+		default:
+			break;
 		}
 	}
 
