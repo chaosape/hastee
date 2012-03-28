@@ -70,8 +70,11 @@ public class STScopeProvider extends AbstractDeclarativeScopeProvider {
 			EReference reference) {
 		// read strict mode preference
 		IPreferencesService prefs = Platform.getPreferencesService();
-		boolean strictMode = prefs.getBoolean("net.sf.hastee.ST", "strict",
-				true, null);
+		boolean strictMode = true;
+		if (prefs != null) {
+			strictMode = prefs.getBoolean("net.sf.hastee.ST", "strict", true,
+					null);
+		}
 
 		IScope outer = null;
 		if (!strictMode) {
