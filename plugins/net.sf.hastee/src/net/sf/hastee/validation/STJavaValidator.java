@@ -17,12 +17,19 @@ public class STJavaValidator extends AbstractSTJavaValidator {
 		EObject contents = decl.getContents();
 		if (contents instanceof TemplateDeclaration) {
 			TemplateDeclaration tmplDecl = (TemplateDeclaration) contents;
-			int expected = tmplDecl.getAttributes().size();
+			int maxExpected = tmplDecl.getAttributes().size();
+			int minExpected = maxExpected;
+			for (Declaration attr : tmplDecl.getAttributes()) {
+				if (attr.getContents() != null) {
+					minExpected--;
+				}
+			}
 
 			ExprTemplateArgs args = ref.getArgs();
 			int actual = (args == null) ? 0 : args.getArgs().size();
-			if (expected != actual) {
-				error("Number of arguments mismatch: expected " + expected
+			if (maxExpected < actual || minExpected > actual) {
+				error("Number of arguments mismatch: expected between "
+						+ minExpected + " and " + maxExpected
 						+ " arguments, got " + actual + " arguments", ref,
 						StPackage.Literals.EXPR_REFERENCE__TARGET, -1);
 			}
