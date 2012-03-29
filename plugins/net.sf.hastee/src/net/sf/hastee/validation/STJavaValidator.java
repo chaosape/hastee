@@ -27,24 +27,20 @@ public class STJavaValidator extends AbstractSTJavaValidator {
 					minExpected--;
 				}
 			}
-			
-			ExprMap exprMap;
 
 			ExprTemplateArgs args = ref.getArgs();
 			int actual = (args == null) ? 0 : args.getArgs().size();
-			if (args != null) {
-				actual = args.getArgs().size();
 
+			ExprMap exprMap = EcoreHelper
+					.getContainerOfType(ref, ExprMap.class);
+			if (exprMap != null && exprMap.getTemplate() == ref) {
+				actual += exprMap.getMembers().size();
 			} else {
-				exprMap = EcoreHelper.getContainerOfType(ref,
-						ExprMap.class);
-				if (exprMap != null && exprMap.getTemplate() == ref) {
-					actual = exprMap.getMembers().size();
-				} else {
-					actual = EcoreHelper.getContainerOfType(ref,
-							ExprNoComma.class) != null ? 1 : 0;
-				}
+				actual += EcoreHelper
+						.getContainerOfType(ref, ExprNoComma.class) != null ? 1
+						: 0;
 			}
+			
 			if (maxExpected < actual || minExpected > actual) {
 				error("Number of arguments mismatch: expected between "
 						+ minExpected + " and " + maxExpected
