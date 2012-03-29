@@ -120,19 +120,19 @@ State_decl_MD(actor) ::= <<
 >>
 
 Transitions_decl_MD(actor) ::= <<
-!<actor.templateData.actionScheduler.(actor.fsm.transitions)>
+!<actor.templateData.actionScheduler.(actor.fsm.transitions.class)>
 >>
 
-Transition_decl_MD(actor, transition) ::= <<
+Transition_decl_MD(actor, state) ::= <<
+!<actor.templateData.actionScheduler.(state)>
+>>
+
+NextStates_decl_MD(actor, transitions) ::= <<
+!<actor.templateData.actionScheduler.(transitions)>
+>>
+
+NextState_decl_MD(actor, transition) ::= <<
 !<actor.templateData.actionScheduler.(transition)>
->>
-
-NextStates_decl_MD(actor, nextStates) ::= <<
-!<actor.templateData.actionScheduler.(nextStates)>
->>
-
-NextState_decl_MD(actor, nextState) ::= <<
-!<actor.templateData.actionScheduler.(nextState)>
 >>
 
 Sched_decl_MD(actor, action) ::= <<
@@ -312,27 +312,27 @@ State_MD(actor) ::= <<
 >>
 
 Transitions_MD(actor) ::= <<
-<Transitions_decl_MD(actor)> = metadata !{<actor.fsm.transitions: {transitions | metadata <Transition_decl_MD(actor, transitions)>}; separator=", ">}
-<actor.fsm.transitions: {transitions | <Transition_MD(actor, transitions)>}; separator="\n">
+<Transitions_decl_MD(actor)> = metadata !{<actor.fsm.states: {state | metadata <Transition_decl_MD(actor, state)>}; separator=", ">}
+<actor.fsm.states: {state | <Transition_MD(actor, state)>}; separator="\n">
 >>
 
-Transition_MD(actor, transitions) ::= <<
-;;;; Transitions from <transitions.sourceState.name>
-<if(transitions.list.empty)
-><Transition_decl_MD(actor, transitions)> = metadata !{<varState_MD(transitions.sourceState)>, null}<
+Transition_MD(actor, state) ::= <<
+;;;; Transitions from <state.name>
+<if(state.outgoing.empty)
+><Transition_decl_MD(actor, state)> = metadata !{<varState_MD(state)>, null}<
 else
-><Transition_decl_MD(actor, transitions)> = metadata !{<varState_MD(transitions.sourceState)>, metadata <NextStates_decl_MD(actor, transitions.list)>}
-<NextStates_MD(actor, transitions.list)><
+><Transition_decl_MD(actor, state)> = metadata !{<varState_MD(state)>, metadata <NextStates_decl_MD(actor, state.outgoing)>}
+<NextStates_MD(actor, state.outgoing)><
 endif>
 >>
 
-NextStates_MD(actor, transitionList) ::= <<
-<NextStates_decl_MD(actor, transitionList)> = metadata !{<transitionList: { transition | metadata <NextState_decl_MD(actor, transition)>}; separator=", ">}
-<transitionList: {transition | <NextState_MD(actor, transition)>}; separator="\n">
+NextStates_MD(actor, transitions) ::= <<
+<NextStates_decl_MD(actor, transitions)> = metadata !{<transitions: { transition | metadata <NextState_decl_MD(actor, transition)>}; separator=", ">}
+<transitions: {transition | <NextState_MD(actor, transition)>}; separator="\n">
 >>
 
 NextState_MD(actor, transition) ::= <<
-<NextState_decl_MD(actor, transition)> = metadata !{metadata <action_decl_MD(actor, transition.action)>, <varState_MD(transition.state)>}
+<NextState_decl_MD(actor, transition)> = metadata !{metadata <action_decl_MD(actor, transition.action)>, <varState_MD(transition.target)>}
 >>
 
 Type_MD(actor, var) ::= <<
@@ -427,7 +427,7 @@ varType_MD(type) ::= <<
 <if(type.int)> i32 <type.size> <
 elseif(type.uint)> i32 <type.size> <
 elseif(type.bool)> i32 1 < 
-elseif(type.list)><varType_MD(type.elementType)><
+elseif(type.list)><varType_MD(type.innermostType)><
 elseif(type.string)> i32 8 <
 endif>
 >>
@@ -508,10 +508,10 @@ fifo(port) ::= <<
 ///////////////////////////////////////////////////////////////////////////////
 
 Constant(constant, type) ::= <<
-<if (constant.booleanExpr)><printBool(constant)><
-elseif(constant.intExpr)><printInt(constant)><
-elseif(constant.listExpr)><printList(constant, type)><
-elseif(constant.stringExpr)><printString(constant)><
+<if (constant.exprBool)><printBool(constant)><
+elseif(constant.exprInt)><printInt(constant)><
+elseif(constant.exprList)><printList(constant, type)><
+elseif(constant.exprString)><printString(constant)><
 endif>
 >>
 
@@ -529,7 +529,7 @@ printList(constant, type) ::= <<
 >>
 
 printString(constant) ::= <<
-c"<constant>"
+c<constant>
 >>
 
 
@@ -537,8 +537,14 @@ c"<constant>"
 // Argument type declaration
 ///////////////////////////////////////////////////////////////////////////////
 
-argumentTypeDeclaration(variable) ::= <<
-<variable.type><if(variable.type.list)>*<endif>
+argumentTypeDeclaration(param) ::= <<
+<if(param.variable.type.string)
+> i8* <
+elseif(param.variable.type.list)
+> <param.variable.type>* <
+else
+> <param.variable.type> <
+endif>
 >>
 
 
@@ -551,7 +557,7 @@ Var(var) ::= <<
 >>
 
 Expr(expr) ::= <<
-<if(expr.varExpr)><Var(expr.use.variable)><else><Constant(expr, expr.type)><endif>
+<if(expr.exprVar)><Var(expr.use.variable)><else><Constant(expr, expr.type)><endif>
 >>
 
 indexes(indexes) ::= <<
@@ -562,16 +568,28 @@ indexesName(indexes) ::= <<
 <indexes: {index |<index>}; separator="_">
 >>
 
-parameters(arguments, parameters) ::= <<
-<arguments, parameters: { arg, param | <parameter(arg.type, param)>}; separator=", ">
+printParameters(arguments, parameters) ::= <<
+<arguments, parameters: { arg, param | <printParameter(arg.variable.type, param)>}; separator=", ">
 >>
 
-parameter(type, expr) ::= <<
-<type><if(type.list)>*<endif> <Expr(expr)>
+printParameter(type, param) ::= <<
+<if (param.byRef)
+>TODO <
+elseif(type.string)
+> i8* <if(param.value.use.variable.local)> <Expr(param.value)> <else> noalias getelementptr inbounds (<param.value.type>* <Expr(param.value)>, i64 0, i64 0) <endif><
+else
+> <type><if(type.list)>*<endif> <Expr(param.value)> <
+endif>
 >>
 
-argumentDeclaration(variable) ::= <<
-<variable.type><if(variable.type.list)>*<endif> %<variable.name>
+argumentDeclaration(param) ::= <<
+<if(param.variable.type.string)
+> i8* %<param.variable.name><
+elseif(param.variable.type.list)
+><param.variable.type>* %<param.variable.name><
+else
+><param.variable.type> %<param.variable.name><
+endif>
 >>
 
 
@@ -597,17 +615,8 @@ initializeStateVar(variable) ::= <<
 ///////////////////////////////////////////////////////////////////////////////
 
 PrintInstr(parameters) ::= <<
-call i32 (i8*, ...)* @printf(<parameters: PrintParameter(); separator=", ">)
+call i32 (i8*, ...)* @printf(<parameters:{param | <printParameter(param.value.type, param)>}; separator=", ">)
 >>
-
-PrintParameter(parameter) ::= <<
-<if (parameter.type.string)
-> i8* noalias getelementptr inbounds (<parameter.type>* @<parameter>, i64 0, i64 0) <
-else
-><parameter.type> <Expr(parameter)><
-endif>
->>
-
 
 ///////////////////////////////////////////////////////////////////////////////
 // ORCC IR Instructions
@@ -636,7 +645,7 @@ else
 ><if(call.target)
 >%<call.target.variable.indexedName> = <
 endif
->call <call.procedure.returnType> @<call.procedure.name> (<parameters(call.procedure.parameters, call.parameters)>)<
+>call <call.procedure.returnType> @<call.procedure.name> (<printParameters(call.procedure.parameters, call.parameters)>)<
 endif>
 >>
 
@@ -661,7 +670,7 @@ printPhiAssignment(phi) ::= <<
 >>
 
 printPhiPairs(phi) ::= <<
-<printPhiExpr(first(phi.values), phi.target.variable.type, first(phi.block.predecessors))>, <printPhiExpr(first(rest(phi.values)), phi.target.variable.type, first(rest(phi.block.predecessors)))>
+<printPhiExpr(first(phi.values), phi.target.variable.type, first(phi.block.cfgNode.predecessors).node)>, <printPhiExpr(first(rest(phi.values)), phi.target.variable.type, first(rest(phi.block.cfgNode.predecessors)).node)>
 >>
 
 printPhiExpr(expr, type, node) ::= <<
@@ -669,7 +678,7 @@ printPhiExpr(expr, type, node) ::= <<
 >>
 
 printReturn(return) ::= <<
-<if(printReturn)
+<if(removeReturn)
 ><if(return.value)
 >ret <return.value.type> <Expr(return.value)><
 else
@@ -679,7 +688,7 @@ endif>
 >>
 
 printStore(store) ::= <<
-<if(store.value.intExpr || store.value.booleanExpr)
+<if(store.value.exprInt || store.value.exprBool)
 >store <store.target.variable.type> <store.value>, <store.target.variable.type>* <Var(store.target.variable)><
 else
 >store <store.value.type> <Expr(store.value)>, <store.target.variable.type>* <Var(store.target.variable)><
@@ -699,69 +708,52 @@ printGEP(gep) ::= <<
 // Nodes
 ///////////////////////////////////////////////////////////////////////////////
 
-printNodes(nodes, printReturn=true) ::= <<
-<nodes:printNode()>
+printNodes(nodes, removeReturn=true) ::= <<
+<nodes:printNode(); separator="\n">
 >>
 
 printNode(node) ::= <<
-<if(node.blockNode)><printBlockNode(node)><
-elseif(node.ifNode)><printIfNode(node)><
-elseif(node.whileNode)><printWhileNode(node)><
-endif>
->>
-
-printFirstNode(node) ::= <<
-<if(node.blockNode)
-><printFirstBlockNode(node)><
-else
->printNode(node)<
+<if(node.nodeBlock)><printBlockNode(node)><
+elseif(node.nodeIf)><printIfNode(node)><
+elseif(node.nodeWhile)><printWhileNode(node)><
 endif>
 >>
 
 printBlockNode(blockNode) ::= <<
-	br label %b<label(blockNode)>
-
 b<label(blockNode)>:
 	<printInstructions(blockNode.instructions)>
-	
->>
-
-printFirstBlockNode(blockNode) ::= <<
-	<printInstructions(blockNode.instructions)> 
+	<if(blockNode.cfgNode.successors)>
+	br label %b<printNextLabel(first(blockNode.cfgNode.successors).node)>
+	<endif>
 >>
 
 printIfNode(ifNode) ::= <<
-	br i1 <Expr(ifNode.condition)>, label %b<label(first(ifNode.thenNodes))>, label %b<if(ifNode.elseNodes)><label(first(ifNode.elseNodes))><else><label(ifNode.joinNode)><endif>
+b<label(ifNode)>:
+	br i1 <Expr(ifNode.condition)>, label %b<printNextLabel(first(ifNode.thenNodes))>, label %b<printNextLabel(first(ifNode.elseNodes))>
 
-b<label(first(ifNode.thenNodes))>: 
-<printFirstNode(first(ifNode.thenNodes))> <printNodes(rest(ifNode.thenNodes))>
-	br label %b<label(ifNode.joinNode)>
+<printNodes(ifNode.thenNodes, removeReturn)>
 
-<if(ifNode.elseNodes)>
-b<label(first(ifNode.elseNodes))>:
-<printFirstNode(first(ifNode.elseNodes))> <printNodes(rest(ifNode.elseNodes))>
-	br label %b<label(ifNode.joinNode)>
-<endif>
+<printNodes(ifNode.elseNodes, removeReturn)>
 
-b<label(ifNode.joinNode)>:
-<printFirstNode(first(ifNode.joinNode))>
-<printNodes(rest(ifNode.joinNode))>
+<printNodes(ifNode.joinNode, removeReturn)>
 >>
 
 printWhileNode(whileNode) ::= <<
-<printBlockNode(whileNode.joinNode)>
-	br i1 <Expr(whileNode.condition)>, label %b<label(first(whileNode.Nodes))>, label %b<label(first(whileNode.joinNode.successors))>
+b<label(whileNode.joinNode)>:
+	<printInstructions(whileNode.joinNode.instructions)>
+	br i1 <Expr(whileNode.condition)>, label %b<label(first(whileNode.Nodes))>, label %b<label(whileNode)>
 
-b<label(first(whileNode.nodes))>:
-<printFirstNode(first(whileNode.nodes))>
-<printNodes(rest(whileNode.nodes))>
-	br label %b<label(whileNode.joinNode)>
+<printNodes(whileNode.nodes, removeReturn)>
 
-b<label(first(whileNode.joinNode.successors))>:
+b<label(whileNode)>:
+	br label %b<printNextLabel(first(whileNode.cfgNode.successors).node)>
 >>
 
 label(node) ::= "b<actor.templateData.nodeToLabelMap.(node)>"
 
+printNextLabel(node)::=<<
+<if(node.nodeWhile)><label(node.joinNode)><else><label(node)><endif>
+>>
 
 ///////////////////////////////////////////////////////////////////////////////
 // Procedure
@@ -776,6 +768,8 @@ entry:
 <if(procedure.locals)>
 	<procedure.locals: variableDeclaration()>
 <endif>
+	br label %b<label(first(procedure.nodes))>
+	
 <printNodes(procedure.nodes)>
 }
 <endif>
@@ -791,6 +785,8 @@ define <action.scheduler.returnType> @<action.scheduler.name>(<action.scheduler.
 entry:
 	<action.scheduler.locals: variableDeclaration()>
 	<action.peekPattern.ports: { port | <fifoVar(port, action.inputPattern.portToVarMap.(port))>}; separator="\n">
+	br label %b<label(first(action.scheduler.nodes))>
+	
 <printNodes(action.scheduler.nodes)>
 }
 
@@ -799,6 +795,8 @@ entry:
 	<action.body.locals: variableDeclaration()>
 	<action.inputPattern.ports: { port | <fifoVar(port, action.inputPattern.portToVarMap.(port))>}; separator="\n">
 	<action.outputPattern.ports: { port | <fifoVar(port, action.outputPattern.portToVarMap.(port))>}; separator="\n">
+	br label %b<label(first(action.body.nodes))>
+
 <printNodes(action.body.nodes)>
 }
 >>
@@ -812,7 +810,7 @@ actorParameter(parameter) ::= <<
 @<parameter.name> = global <parameter.type> undef
 >>
 
-actor(actor, options) ::= <<
+printActor(actor, options) ::= <<
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Generated from "<actor.name>"
