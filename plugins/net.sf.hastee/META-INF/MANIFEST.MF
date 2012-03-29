@@ -1,7 +1,7 @@
 Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
 Bundle-Name: net.sf.hastee
-Bundle-Version: 0.3.7.v20120221
+Bundle-Version: 0.4.0.v20120329
 Bundle-SymbolicName: net.sf.hastee; singleton:=true
 Bundle-ActivationPolicy: lazy
 Require-Bundle: com.ibm.icu;resolution:=optional,
