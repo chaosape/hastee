@@ -1,0 +1,52 @@
+testOk(arg1, arg2, argList) ::= <<
+// Scalar argument
+<zero()>
+<one(arg1)>
+<two(arg1, arg2)>
+<twoWithDefault(arg1)>
+<twoWithDefault(arg1, arg2)>
+
+// List argument
+<arg1: one()>
+<arg1: { arg | <one(arg)> }>
+<arg1, arg2: two()>
+<arg1: two(arg2)>
+<arg1: twoWithDefault()>
+<arg1, arg2: twoWithDefault()>
+>>
+
+testFail(arg1, arg2, arg3) ::= <<
+// Scalar
+<zero(arg1)>
+<one(arg1, arg2)>
+<two(arg1)>
+<two(arg1, arg2, arg3)>
+<twoWithDefault()>
+<twoWithDefault(arg1, arg2, arg3)>
+
+// List argument
+<arg1, arg2: one()>
+<arg1, arg2: { argOne, argTwo | <one(argOne, argTwo)> }>
+<arg1: two()>
+<arg1, arg2, arg3: two()>
+<arg1, arg2: two(arg3)>
+<arg1, arg2: twoWithDefault(arg3)>
+>>
+
+
+zero() ::= <<
+Test
+>>
+
+one(first) ::= <<
+Test
+>>
+
+two(first, second) ::= <<
+Test
+>>
+
+twoWithDefault(first, second=true) ::= <<
+Test
+>>
+
