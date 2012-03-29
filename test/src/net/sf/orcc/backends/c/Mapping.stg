@@ -1,6 +1,6 @@
-mapping(network, options) ::= <<
+printNetwork(network, options) ::= <<
 
-\<?xml version="1.0" encoding="UTF-8"?\>
+\<?xml version="1.0"?\>
 \<Configuration\>
 	\<Partitioning\>
 		<options.mapping.keys : {key | <core(id=i0, instances=options.mapping.(key))>}; separator="\n">
@@ -11,7 +11,7 @@ mapping(network, options) ::= <<
 
 core(id, instances) ::= <<
 \<Partition id="<id>"\>
-	<instances : {instance | \<Instance id="<instance.id>"/\>}; separator="\n">
+	<instances : {instance | \<Instance id="<instance.name>"/\>}; separator="\n">
 \</Partition\>
 >>
 
