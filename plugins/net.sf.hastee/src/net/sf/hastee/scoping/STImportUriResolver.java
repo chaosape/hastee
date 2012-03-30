@@ -19,22 +19,17 @@
  */
 package net.sf.hastee.scoping;
 
+import java.io.File;
+
 import net.sf.hastee.st.Import;
 
 import org.eclipse.core.resources.IFile;
-import org.eclipse.core.resources.IFolder;
-import org.eclipse.core.resources.IProject;
-import org.eclipse.core.resources.IResource;
 import org.eclipse.core.resources.IWorkspace;
 import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.Path;
 import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.resource.Resource;
-import org.eclipse.jdt.core.IJavaProject;
-import org.eclipse.jdt.core.IPackageFragmentRoot;
-import org.eclipse.jdt.core.JavaCore;
-import org.eclipse.jdt.core.JavaModelException;
 import org.eclipse.xtext.scoping.impl.ImportUriResolver;
 
 /**
@@ -56,33 +51,26 @@ public class STImportUriResolver extends ImportUriResolver {
 	}
 
 	private String getURI(Resource resource, String path) {
-		String uri = resource.getURI().toPlatformString(true);
-		IWorkspace workspace = ResourcesPlugin.getWorkspace();
-		IFile file = workspace.getRoot().getFile(new Path(uri));
-		IProject project = file.getProject();
-
-		IJavaProject javaProject = JavaCore.create(project);
-		if (!javaProject.exists()) {
-			return null;
-		}
-
-		// iterate over package roots
-		try {
-			for (IPackageFragmentRoot root : javaProject
-					.getPackageFragmentRoots()) {
-				IResource res = root.getCorrespondingResource();
-				if (res != null && res.getType() == IResource.FOLDER) {
-					IFolder folder = (IFolder) res;
-					IFile importFile = folder.getFile(path);
-					if (importFile.exists()) {
-						URI fileUri = URI.createPlatformResourceURI(importFile
-								.getFullPath().toString(), true);
-						return fileUri.toString();
-					}
+		String[] segments = new Path(path).segments();
+		
+		URI uri = resource.getURI();
+		while (uri.segmentCount() > 1) {
+			uri = uri.trimSegments(1);
+			URI newURI = uri.appendSegments(segments);
+			if (newURI.isPlatform()) {
+				String result = newURI.toPlatformString(true);
+				IWorkspace workspace = ResourcesPlugin.getWorkspace();
+				IFile file = workspace.getRoot().getFile(new Path(result));
+				if (file.exists()) {
+					return result;
+				}
+			} else {
+				String result = newURI.toFileString();
+				File file = new File(result);
+				if (file.exists()) {
+					return result;
 				}
 			}
-		} catch (JavaModelException e) {
-			e.printStackTrace();
 		}
 
 		return null;

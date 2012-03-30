@@ -28,13 +28,11 @@ import net.sf.hastee.st.Declaration;
 import net.sf.hastee.st.StFactory;
 import net.sf.hastee.st.StPackage;
 
-import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.ecore.EClass;
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.EReference;
 import org.eclipse.emf.ecore.resource.Resource;
-import org.eclipse.emf.ecore.resource.ResourceSet;
-import org.eclipse.emf.ecore.resource.impl.ResourceSetImpl;
+import org.eclipse.emf.ecore.resource.impl.ResourceImpl;
 import org.eclipse.xtext.linking.impl.DefaultLinkingService;
 import org.eclipse.xtext.nodemodel.INode;
 
@@ -107,19 +105,9 @@ public class StLinkingService extends DefaultLinkingService {
 	 * @return the resource for built-in declarations
 	 */
 	private Resource getBuiltinResource() {
-		if (stubsResource != null) {
-			return stubsResource;
-		}
-
-		URI stubURI = URI.createPlatformPluginURI(
-				"/net.sf.hastee/src/net/sf/hastee/Builtin.java", true);
-
-		ResourceSet set = new ResourceSetImpl();
-		stubsResource = set.getResource(stubURI, false);
 		if (stubsResource == null) {
-			stubsResource = set.createResource(stubURI);
+			stubsResource = new ResourceImpl();
 		}
-
 		return stubsResource;
 	}
 
