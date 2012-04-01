@@ -28,6 +28,7 @@ import net.sf.hastee.st.Declaration;
 import net.sf.hastee.st.StFactory;
 import net.sf.hastee.st.StPackage;
 
+import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.ecore.EClass;
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.EReference;
@@ -106,7 +107,9 @@ public class StLinkingService extends DefaultLinkingService {
 	 */
 	private Resource getBuiltinResource() {
 		if (stubsResource == null) {
-			stubsResource = new ResourceImpl();
+			String tmpDir = System.getProperty("java.io.tmpdir");
+			URI uri = URI.createFileURI(tmpDir + "/builtin.stg");
+			stubsResource = new ResourceImpl(uri);
 		}
 		return stubsResource;
 	}

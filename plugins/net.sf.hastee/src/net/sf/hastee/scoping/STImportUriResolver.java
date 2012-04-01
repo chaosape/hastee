@@ -52,24 +52,26 @@ public class STImportUriResolver extends ImportUriResolver {
 
 	private String getURI(Resource resource, String path) {
 		String[] segments = new Path(path).segments();
-		
+
 		URI uri = resource.getURI();
 		while (uri.segmentCount() > 1) {
 			uri = uri.trimSegments(1);
 			URI newURI = uri.appendSegments(segments);
+
+			boolean exists;
 			if (newURI.isPlatform()) {
 				String result = newURI.toPlatformString(true);
 				IWorkspace workspace = ResourcesPlugin.getWorkspace();
 				IFile file = workspace.getRoot().getFile(new Path(result));
-				if (file.exists()) {
-					return result;
-				}
+				exists = file.exists();
 			} else {
 				String result = newURI.toFileString();
 				File file = new File(result);
-				if (file.exists()) {
-					return result;
-				}
+				exists = file.exists();
+			}
+
+			if (exists) {
+				return newURI.toString();
 			}
 		}
 
