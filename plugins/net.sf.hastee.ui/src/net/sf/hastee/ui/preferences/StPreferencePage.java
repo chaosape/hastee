@@ -40,7 +40,7 @@ public class StPreferencePage extends LanguageRootPreferencePage {
 
 	@Override
 	public void init(IWorkbench workbench) {
-		getPreferenceStore().setDefault("strict", true);
+		getPreferenceStore().setDefault("strict", false);
 	}
 
 }

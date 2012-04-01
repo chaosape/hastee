@@ -7,9 +7,9 @@ import net.sf.hastee.st.ExprReference;
 import net.sf.hastee.st.ExprTemplateArgs;
 import net.sf.hastee.st.StPackage;
 import net.sf.hastee.st.TemplateDeclaration;
-import net.sf.hastee.util.EcoreHelper;
 
 import org.eclipse.emf.ecore.EObject;
+import org.eclipse.xtext.EcoreUtil2;
 import org.eclipse.xtext.validation.Check;
 
 public class STJavaValidator extends AbstractSTJavaValidator {
@@ -31,16 +31,14 @@ public class STJavaValidator extends AbstractSTJavaValidator {
 			ExprTemplateArgs args = ref.getArgs();
 			int actual = (args == null) ? 0 : args.getArgs().size();
 
-			ExprMap exprMap = EcoreHelper
-					.getContainerOfType(ref, ExprMap.class);
+			ExprMap exprMap = EcoreUtil2.getContainerOfType(ref, ExprMap.class);
 			if (exprMap != null && exprMap.getTemplate() == ref) {
 				actual += exprMap.getMembers().size();
 			} else {
-				actual += EcoreHelper
-						.getContainerOfType(ref, ExprNoComma.class) != null ? 1
+				actual += EcoreUtil2.getContainerOfType(ref, ExprNoComma.class) != null ? 1
 						: 0;
 			}
-			
+
 			if (maxExpected < actual || minExpected > actual) {
 				error("Number of arguments mismatch: expected between "
 						+ minExpected + " and " + maxExpected
