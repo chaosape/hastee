@@ -144,7 +144,7 @@ ExprInclude:
 
 // call to template
 ExprReference:
-	(super ?= 'super' '.')? target=[Declaration] '(' args=ExprTemplateArgs? ')';
+	('@')? (super ?= 'super' '.')? target=[Declaration] '(' args=ExprTemplateArgs? ')';
 
 ExprTemplateArgs:
 	NamedArgs
