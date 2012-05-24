@@ -249,6 +249,17 @@ public class CustomSTLexer extends Lexer {
 		lexingState.push(LexingState.GROUP);
 	}
 
+	public String getErrorMessage(Token t) {
+		String retval = super.getErrorMessage(t);
+		if ( retval == null) {
+			// TODO this will screw up the whole editor 
+			System.err.println("Dazed and confused: No error messge for token: " + t.toString());
+			return "Lexer error at: " + t.toString();
+		}
+		return retval;
+	}
+	
+
 	/** ',' | ID | WS | '|' */
 	private int mAnonTemplate() throws RecognitionException {
 		int c = input.LA(1);
@@ -460,6 +471,10 @@ public class CustomSTLexer extends Lexer {
 				return OR; // ||
 			case '{':
 				return mAnonTmplStart();
+//			case '\\':
+//				if ( c == '\\' && input.LA(2) == '\"' && !bigString) {
+//					return mSUBSTRING();
+//				}
 			default:
 				if (c == delimiterStopChar) {
 					input.consume();
@@ -593,6 +608,27 @@ public class CustomSTLexer extends Lexer {
 
 		return STRING;
 	}
+	
+	/** STRING inside string(bigstring=false): setTest(ranges) ::= "<ranges; separator=\" || \">" */ 
+	private int mSUBSTRING() {
+		// assume that both \ and " were checked by caller
+		input.consume();
+		input.consume();
+		int c = input.LA(1);
+		while (c != '\\' && input.LA(2)!='"' ) {
+			input.consume();
+			if (c == '\\') {
+				// in STRING \\ can escape anything
+				input.consume();
+			}
+			c = input.LA(1);
+		}
+		input.consume();
+		input.consume();
+
+		return STRING;
+	}
+	
 
 	private int mTemplate() throws RecognitionException {
 		int c = input.LA(1);
