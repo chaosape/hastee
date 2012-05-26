@@ -34,8 +34,10 @@ Import:
 
 // top-level elements: TemplateNamed and Dictionary
 GroupMember returns Declaration:
-	name = ID
+	('@')? name = PrefixedId
 	contents = MemberBody;
+
+PrefixedId: (ID '.')? ID;
 
 MemberBody: TemplateDeclaration | DictionaryDeclaration;
 
@@ -191,3 +193,4 @@ ExprList:
 // any character that is not anywhere else in the grammar
 // does not matter which one, since this is overriden by our lexer anyway
 terminal TEXT : '`';
+

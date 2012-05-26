@@ -471,10 +471,10 @@ public class CustomSTLexer extends Lexer {
 				return OR; // ||
 			case '{':
 				return mAnonTmplStart();
-//			case '\\':
-//				if ( c == '\\' && input.LA(2) == '\"' && !bigString) {
-//					return mSUBSTRING();
-//				}
+			case '\\':
+				if ( c == '\\' && input.LA(2) == '\"' && !bigString) {
+					return mSUBSTRING();
+				}
 			default:
 				if (c == delimiterStopChar) {
 					input.consume();
