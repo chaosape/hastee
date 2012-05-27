@@ -85,7 +85,7 @@ Element:
 TextContents: contents = TEXT;
 
 ExpressionElement:
-	'<' expression=Expression (';' options+=Option (',' options+=Option)*)? '>';
+	'<' ('@')? expression=Expression (';' options+=Option (',' options+=Option)*)? '>';
 
 // if/elseif/else/endif test
 Test:
@@ -146,14 +146,14 @@ ExprInclude:
 
 // call to template
 ExprReference:
-	('@')? (super ?= 'super' '.')? target=[Declaration] '(' args=ExprTemplateArgs? ')';
+	(super ?= 'super' '.')? target=[Declaration] '(' ('...')? args=ExprTemplateArgs? ')';
 
 ExprTemplateArgs:
 	NamedArgs
 	| Args;
 
 NamedArgs:
-	args+=NamedArg (',' args+=NamedArg)*;
+	args+=NamedArg (',' args+=NamedArg)* (',' '...')?;
 
 NamedArg returns Arg:
 	attribute=[Declaration] '=' value=ExprNoComma;
