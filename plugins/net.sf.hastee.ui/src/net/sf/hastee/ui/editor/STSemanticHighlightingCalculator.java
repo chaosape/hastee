@@ -21,6 +21,7 @@ package net.sf.hastee.ui.editor;
 
 import static net.sf.hastee.ui.editor.STHighlightingConfiguration.EXPRESSION;
 import static net.sf.hastee.ui.editor.STHighlightingConfiguration.TEMPLATE_NAME;
+import static net.sf.hastee.ui.editor.STHighlightingConfiguration.TEXT;
 
 import java.util.List;
 
@@ -28,6 +29,7 @@ import net.sf.hastee.st.Declaration;
 import net.sf.hastee.st.ExpressionElement;
 import net.sf.hastee.st.Group;
 import net.sf.hastee.st.StPackage;
+import net.sf.hastee.st.TextContents;
 
 import org.eclipse.emf.common.util.TreeIterator;
 import org.eclipse.emf.ecore.EObject;
@@ -79,6 +81,9 @@ public class STSemanticHighlightingCalculator implements
 								node.getLength(), EXPRESSION);
 					}
 					it.prune();
+				} else if(object instanceof TextContents) {
+					INode node = NodeModelUtils.findActualNodeFor( object );
+					acceptor.addPosition(node.getOffset(),node.getLength(),TEXT);
 				}
 			}
 		}

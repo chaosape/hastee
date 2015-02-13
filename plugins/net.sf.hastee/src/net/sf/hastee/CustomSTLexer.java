@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, IETR/INSA of Rennes
+ * 	Copyright (c) 2011, IETR/INSA of Rennes
  * Copyright (c) 2012, Synflow
  * All rights reserved.
  * 
@@ -114,6 +114,8 @@ public class CustomSTLexer extends Lexer {
 	private static final int STRING;
 
 	private static final int TEXT;
+	
+	private static final int ESCAPE;
 
 	private static final int TMPL_BEGIN;
 
@@ -155,6 +157,7 @@ public class CustomSTLexer extends Lexer {
 		SL_COMMENT = getTokenId(tokenMap, "RULE_SL_COMMENT");
 		STRING = getTokenId(tokenMap, "RULE_STRING");
 		TEXT = getTokenId(tokenMap, "RULE_TEXT");
+		ESCAPE = getTokenId(tokenMap, "RULE_ESCAPE");
 		WS = getTokenId(tokenMap, "RULE_WS");
 
 		keywords = new HashMap<String, Integer>();
@@ -226,6 +229,10 @@ public class CustomSTLexer extends Lexer {
 		return c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c == '_';
 	}
 
+	public static boolean isHexDigit(int c) {
+		return c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c >= '0' && c <= '9';
+	}
+	
 	public static boolean isWS(int c) {
 		return c == ' ' || c == '\t' || c == '\n' || c == '\r';
 	}
@@ -742,18 +749,48 @@ public class CustomSTLexer extends Lexer {
 		return 0;
 	}
 
-	/** */
+	// XXX: This method should handle all escaped forms within delimiters.
 	private int mTmplESCAPE() throws RecognitionException {
+		boolean newLineCheck = false;
 		input.consume(); // kill \\
 		int c = input.LA(1);
 		switch (c) {
-		// TODO ESCAPE
+		//XXX: The cheat sheet for ST 4.0 indicates that we should be able to multiple unicode characters in escapes
+		// of these kinds. However, when looking at the ST code it seems to no accept multiple unicode characters.
+		//uni
+		case 'u':
+			input.consume();
+			for(int i = 0;i<4;i++) {
+				if(isHexDigit(input.LA(1))) {
+					input.consume();
+				} else {
+					new MismatchedTokenException(input.LA(1), input);
+				}
+			}
+			break;
+		case '\\':
+			input.consume();
+			newLineCheck = true;
+			break;
+		// XXX: The following case does not truly belong in this function since it is not detecting an escape but 
+		// a comment.
+		case '!':
+			input.consume();
+			while(!(input.LA(1)=='!'&&input.LA(2)==delimiterStopChar)) {input.consume();}
+			input.consume();
+			input.consume();
+			return ML_COMMENT;
+		default: 
+			throw new NoViableAltException("mTmplESCAPE", 0, state.type, input);
 		}
-		input.consume();
 		match(delimiterStopChar);
-		return TEXT;
+		if(newLineCheck) {
+			for(c=input.LA(1);c==' '||c=='\t';c=input.LA(1)) {input.consume();}
+			if(c=='\r') {input.consume();}
+			match('\n');
+		}
+		return ESCAPE;
 	}
-
 	@Override
 	public void mTokens() throws RecognitionException {
 		LexingState topState = lexingState.peek();

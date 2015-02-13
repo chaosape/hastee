@@ -104,11 +104,11 @@ Workflow {
 			// generates a more lightweight Antlr parser and lexer tailored for content assist  
 			fragment = parser.antlr.XtextAntlrUiGeneratorFragment {}
 
-			// project wizard (optional) 
-			// fragment = projectWizard.SimpleProjectWizardFragment {
-			// 		generatorProjectName = "${projectName}.generator" 
+			//project wizard (optional) 
+			//fragment = projectWizard.SimpleProjectWizardFragment {
+			//generatorProjectName = "${projectName}.generator" 
 			//		modelFileExtension = file.extensions
-			// }
+			//}
 		}
 	}
 }

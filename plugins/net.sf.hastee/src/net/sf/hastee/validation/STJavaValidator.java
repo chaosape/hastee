@@ -35,8 +35,8 @@ public class STJavaValidator extends AbstractSTJavaValidator {
 			if (exprMap != null && exprMap.getTemplate() == ref) {
 				actual += exprMap.getMembers().size();
 			} else {
-				actual += EcoreUtil2.getContainerOfType(ref, ExprNoComma.class) != null ? 1
-						: 0;
+				ExprNoComma enc = EcoreUtil2.getContainerOfType(ref, ExprNoComma.class);
+				actual += enc.getMap() != null && enc.getMap() == ref? 1 : 0;
 			}
 
 			if (maxExpected < actual || minExpected > actual) {

@@ -1,7 +1,7 @@
 Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
 Bundle-Name: net.sf.hastee.ui
-Bundle-Version: 0.4.1.v20120329
+Bundle-Version: 0.4.1.v20150202
 Bundle-SymbolicName: net.sf.hastee.ui; singleton:=true
 Bundle-ActivationPolicy: lazy
 Require-Bundle: net.sf.hastee;bundle-version="0.4.1";visibility:=reexport,
@@ -15,6 +15,7 @@ Require-Bundle: net.sf.hastee;bundle-version="0.4.1";visibility:=reexport,
  org.apache.log4j
 Bundle-RequiredExecutionEnvironment: JavaSE-1.6
 Export-Package: net.sf.hastee.ui.contentassist.antlr,
- net.sf.hastee.ui.contentassist
+ net.sf.hastee.ui.contentassist,
+ net.sf.hastee.ui.quickfix
 Bundle-Activator: net.sf.hastee.ui.internal.STActivator
 Import-Package: org.apache.log4j

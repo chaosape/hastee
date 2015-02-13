@@ -19,7 +19,7 @@
  */
 grammar net.sf.hastee.ST with org.eclipse.xtext.common.Terminals
 
-import "http://www.eclipse.org/emf/2002/Ecore" as ecore
+//import "http://www.eclipse.org/emf/2002/Ecore" as ecore
 generate st "http://www.sf.net/hastee/ST"
 
 // entry point
@@ -52,8 +52,8 @@ DefaultAttribute returns Declaration: name=ID '=' contents = DefaultValue;
 
 DefaultValue:
 	('"' string=Template '"')
-	| bool='true'
-	| bool='false';
+	| bool=BOOL
+	;
 
 DictionaryDeclaration:
 	'::=' '[' pairs+=Pair (',' pairs+=Pair)* ']';
@@ -62,9 +62,10 @@ Pair:
 	'"' key=Template '"' ':' definition = TemplateDef;
 
 TemplateDef:
-	( ('<<' template = Template '>>')
-	| ('<%' template = Template '%>') // new ST 4.0.2 "no newline" style 
-	| ('"' template = Template '"'));
+	{TemplateNL} ('<<' template = Template '>>')
+	|{TemplateNoNL} ('<%' template = Template '%>') // new ST 4.0.2 "no newline" style 
+	|{TemplateSL} ('"' template = Template '"')
+	;
 
 Template:
 	{Template} (elements+=Element)*;
@@ -80,6 +81,7 @@ TemplateAnonymous:
 Element:
 	Test
 	| ExpressionElement
+	| {EscapeElement} escape=ESCAPE
 	| TextContents;
 
 TextContents: contents = TEXT;
@@ -174,7 +176,7 @@ ExprPrimary:
 	| ExprList
 	| ExprIndirect;
 
-ExprBool: bool='true' | bool='false';
+ExprBool: bool=BOOL;
 
 ExprAttribute:
 	attribute=[Declaration];
@@ -190,7 +192,10 @@ ExprIndirect:
 ExprList:
 	'[' values+=ExprNoComma (',' values+=ExprNoComma)* ']';
 
+terminal BOOL: 'true'|'false';
 // any character that is not anywhere else in the grammar
 // does not matter which one, since this is overriden by our lexer anyway
 terminal TEXT : '`';
+terminal ESCAPE : '*';
+
 

@@ -39,6 +39,8 @@ public class STHighlightingConfiguration extends
 	public static final String SEPARATORS = "Separators";
 
 	public static final String TEMPLATE_NAME = "TemplateName";
+	
+	public static final String TEXT = "TemplateText";
 
 	@Override
 	public void configure(IHighlightingConfigurationAcceptor acceptor) {
@@ -49,6 +51,8 @@ public class STHighlightingConfiguration extends
 				separatorsTextStyle());
 		acceptor.acceptDefaultHighlighting(EXPRESSION, "Template expression",
 				expressionTextStyle());
+		acceptor.acceptDefaultHighlighting(TEXT, "Template Text",
+				noFormatTextStyle());
 	}
 
 	public TextStyle expressionTextStyle() {
@@ -67,6 +71,13 @@ public class STHighlightingConfiguration extends
 		TextStyle textStyle = new TextStyle();
 		textStyle.setStyle(SWT.BOLD);
 		textStyle.setColor(new RGB(255, 128, 0));
+		return textStyle;
+	}
+	
+
+	public TextStyle noFormatTextStyle() {
+		TextStyle textStyle = new TextStyle();
+		textStyle.setBackgroundColor(new RGB(128,128,255));
 		return textStyle;
 	}
 
